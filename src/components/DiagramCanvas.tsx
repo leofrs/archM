@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import svgPanZoom from "svg-pan-zoom";
 import { NodeInspectorDrawer } from "./NodeInspectorDrawer";
+import { ReactFlowView } from "./ReactFlowView";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -21,13 +22,13 @@ export function DiagramCanvas({
   const mainRef = useRef(null);
   const panZoomInstance = useRef(null);
 
+  const [viewMode, setViewMode] = useState("mermaid");
   const [showCodeEditor, setShowCodeEditor] = useState(false);
   const [editableCode, setEditableCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
 
-  // Injeta FontAwesome CDN
   useEffect(() => {
     if (!document.getElementById("font-awesome-cdn")) {
       const link = document.createElement("link");
@@ -66,7 +67,6 @@ export function DiagramCanvas({
     }
   };
 
-  // Conecta os cliques nos nós do SVG com os metadados REAIS gerados pela IA
   const attachNodeClickListeners = () => {
     if (!containerRef.current) return;
     const svgElement = containerRef.current.querySelector("svg");
@@ -79,18 +79,15 @@ export function DiagramCanvas({
       nodeEl.addEventListener("click", (e) => {
         e.stopPropagation();
 
-        // Remove destaques anteriores
         nodeElements.forEach((el) => (el.style.filter = "none"));
         nodeEl.style.filter = "drop-shadow(0 0 6px rgba(99, 102, 241, 0.8))";
 
         const svgNodeId = nodeEl.id || "";
         const fullText = (nodeEl.textContent || "").trim();
 
-        // Procura pelos metadados no objeto retornado pela IA comparando as chaves dos nós
         let matchedMetadata = null;
 
         if (nodesMetadata) {
-          // Busca por chave exata ou contida no ID do SVG do Mermaid
           for (const [key, data] of Object.entries(nodesMetadata)) {
             if (
               svgNodeId.includes(key) ||
@@ -120,7 +117,6 @@ export function DiagramCanvas({
           }
         }
 
-        // Fallback genérico apenas se não encontrar correspondência no JSON da IA
         if (!matchedMetadata) {
           matchedMetadata = {
             id: svgNodeId,
@@ -130,7 +126,7 @@ export function DiagramCanvas({
             colorClass: "bg-slate-100 text-slate-800 border-slate-200",
             headers: ["Content-Type: application/json"],
             dtoSample: JSON.stringify({ nodeText: fullText }, null, 2),
-            codeSnippet: `// Implementação do nó: ${fullText}`,
+            codeSnippet: `// Implementação: ${fullText}`,
           };
         }
 
@@ -187,11 +183,16 @@ export function DiagramCanvas({
   };
 
   useEffect(() => {
-    if (mermaidCode) {
+    if (mermaidCode && viewMode === "mermaid") {
       renderDiagram(mermaidCode);
       setSelectedNode(null);
     }
-  }, [mermaidCode]);
+  }, [mermaidCode, viewMode]);
+
+  const handleSaveFromReactFlow = (newMermaidCode) => {
+    setEditableCode(newMermaidCode);
+    renderDiagram(newMermaidCode);
+  };
 
   const handleApplyManualEdit = () => {
     renderDiagram(editableCode);
@@ -243,49 +244,78 @@ export function DiagramCanvas({
     <main
       ref={mainRef}
       className="flex-1 relative flex flex-col bg-slate-50 overflow-hidden"
-      style={{
-        backgroundImage:
-          "linear-gradient(rgba(100, 116, 139, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 116, 139, 0.1) 1px, transparent 1px)",
-        backgroundSize: "40px 40px",
-      }}
     >
-      {/* Botão de Expandir Menu */}
-      {!isSidebarOpen && (
-        <button
-          type="button"
-          onClick={() => setIsSidebarOpen(true)}
-          className="absolute top-5 left-5 z-20 bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:bg-slate-50 px-3 py-2 rounded-xl shadow-sm flex items-center gap-2 text-xs font-semibold cursor-pointer transition-all"
-          title="Abrir Menu Lateral"
-        >
-          <i className="fa-solid fa-bars text-sm"></i>
-          <span>Menu</span>
-        </button>
-      )}
+      {/* BARRA SUPERIOR ESQUERDA (UNIFICADA - NÍVEL 1) */}
+      <div className="absolute top-5 left-5 z-30 flex items-center gap-2">
+        {/* Botão de Expandir Menu Lateral */}
+        {!isSidebarOpen && (
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:bg-slate-50 px-3 py-2 rounded-xl shadow-sm flex items-center gap-2 text-xs font-semibold cursor-pointer transition-all h-9"
+            title="Abrir Menu Lateral"
+          >
+            <i className="fa-solid fa-bars text-sm"></i>
+            <span>Menu</span>
+          </button>
+        )}
 
-      {/* Toolbar Superior */}
-      <div className="absolute top-5 right-5 z-20 flex gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-        <button
-          className="w-9 h-9 border border-transparent bg-slate-100 rounded-md cursor-pointer text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
-          onClick={handleZoomIn}
-          title="Aumentar Zoom"
-        >
-          +
-        </button>
-        <button
-          className="w-9 h-9 border border-transparent bg-slate-100 rounded-md cursor-pointer text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
-          onClick={handleZoomOut}
-          title="Diminuir Zoom"
-        >
-          -
-        </button>
-        <button
-          className="h-9 px-3 border border-transparent bg-slate-100 rounded-md cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
-          onClick={handleResetZoom}
-        >
-          Resetar Visão
-        </button>
+        {/* Alternador de Modo de Visão */}
+        <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex gap-1 h-9 items-center">
+          <button
+            type="button"
+            onClick={() => setViewMode("mermaid")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+              viewMode === "mermaid"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <i className="fa-solid fa-diagram-project"></i>
+            <span>Diagrama Mermaid</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("reactflow")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+              viewMode === "reactflow"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <i className="fa-solid fa-vector-square"></i>
+            <span>Editor Interativo (React Flow)</span>
+          </button>
+        </div>
+      </div>
 
-        {/* Botão do Live Code Editor */}
+      {/* BARRA SUPERIOR DIREITA */}
+      <div className="absolute top-5 right-5 z-30 flex gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+        {viewMode === "mermaid" && (
+          <>
+            <button
+              className="w-9 h-9 border border-transparent bg-slate-100 rounded-md cursor-pointer text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
+              onClick={handleZoomIn}
+              title="Aumentar Zoom"
+            >
+              +
+            </button>
+            <button
+              className="w-9 h-9 border border-transparent bg-slate-100 rounded-md cursor-pointer text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
+              onClick={handleZoomOut}
+              title="Diminuir Zoom"
+            >
+              -
+            </button>
+            <button
+              className="h-9 px-3 border border-transparent bg-slate-100 rounded-md cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
+              onClick={handleResetZoom}
+            >
+              Resetar Visão
+            </button>
+          </>
+        )}
+
         <button
           className={`h-9 px-3 border rounded-md cursor-pointer text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
             showCodeEditor
@@ -299,7 +329,6 @@ export function DiagramCanvas({
           <span>{showCodeEditor ? "Ocultar Editor" : "Ver Código"}</span>
         </button>
 
-        {/* Botão Tela Cheia */}
         <button
           className="h-9 px-3 border border-transparent bg-slate-100 rounded-md cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600 gap-1.5"
           onClick={toggleFullscreen}
@@ -319,27 +348,44 @@ export function DiagramCanvas({
         </button>
       </div>
 
-      {/* Canvas SVG Mermaid */}
-      <div
-        id="mermaid-container"
-        ref={containerRef}
-        className="w-full h-full overflow-hidden flex justify-center items-center [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-none"
-      >
-        {!mermaidCode && (
-          <div className="text-slate-500 text-sm text-center">
-            <div className="text-3xl mb-2.5">⌘</div>O diagrama gerado aparecerá
-            aqui.
-          </div>
-        )}
-      </div>
+      {/* CONTEÚDO 1: VISÃO MERMAID SVG */}
+      {viewMode === "mermaid" && (
+        <div
+          id="mermaid-container"
+          ref={containerRef}
+          className="w-full h-full overflow-hidden flex justify-center items-center [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(100, 116, 139, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 116, 139, 0.1) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        >
+          {!mermaidCode && (
+            <div className="text-slate-500 text-sm text-center">
+              <div className="text-3xl mb-2.5">⌘</div>O diagrama gerado
+              aparecerá aqui.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CONTEÚDO 2: EDITOR INTERATIVO REACT FLOW */}
+      {viewMode === "reactflow" && (
+        <ReactFlowView
+          mermaidCode={editableCode}
+          onSaveMermaid={handleSaveFromReactFlow}
+        />
+      )}
 
       {/* Gaveta de Inspeção do Nó */}
-      <NodeInspectorDrawer
-        node={selectedNode}
-        onClose={() => setSelectedNode(null)}
-      />
+      {viewMode === "mermaid" && (
+        <NodeInspectorDrawer
+          node={selectedNode}
+          onClose={() => setSelectedNode(null)}
+        />
+      )}
 
-      {/* Painel do Live Code Editor */}
+      {/* Editor de Código Mermaid */}
       {showCodeEditor && (
         <div className="absolute bottom-0 left-0 right-0 h-[280px] bg-slate-900 border-t border-slate-800 flex flex-col z-30 shadow-2xl transition-all">
           <div className="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">

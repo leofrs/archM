@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 export function NodeInspectorDrawer({ node, onClose }) {
-  const [activeTab, setActiveTab] = useState("dto"); // 'dto' | 'headers' | 'code'
+  const [activeTab, setActiveTab] = useState("dto");
   const [copiedText, setCopiedText] = useState(false);
 
   if (!node) return null;
@@ -14,7 +14,6 @@ export function NodeInspectorDrawer({ node, onClose }) {
 
   return (
     <aside className="absolute top-0 right-0 bottom-0 w-[380px] bg-white border-l border-slate-200 shadow-2xl z-40 flex flex-col transition-all duration-300 animate-in slide-in-from-right">
-      {/* Header da Gaveta */}
       <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 grid place-items-center text-sm shrink-0">
@@ -40,7 +39,6 @@ export function NodeInspectorDrawer({ node, onClose }) {
         </button>
       </div>
 
-      {/* Badge da Categoria/Camada */}
       <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
         <span
           className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${node.colorClass}`}
@@ -48,12 +46,11 @@ export function NodeInspectorDrawer({ node, onClose }) {
           <i className={`fa-solid ${node.icon} mr-1.5`}></i>
           {node.category}
         </span>
-        <span className="text-[10px] text-slate-500 font-mono">
-          ID: {node.id.slice(0, 12)}
+        <span className="text-[10px] text-slate-500 font-mono truncate max-w-[120px]">
+          ID: {node.id}
         </span>
       </div>
 
-      {/* Navegação por Abas */}
       <div className="flex border-b border-slate-200 bg-white text-xs font-semibold text-slate-600">
         <button
           type="button"
@@ -90,9 +87,7 @@ export function NodeInspectorDrawer({ node, onClose }) {
         </button>
       </div>
 
-      {/* Conteúdo da Aba */}
       <div className="p-4 flex-1 overflow-y-auto bg-slate-50/50">
-        {/* TAB 1: DTO / Payload */}
         {activeTab === "dto" && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -118,7 +113,6 @@ export function NodeInspectorDrawer({ node, onClose }) {
           </div>
         )}
 
-        {/* TAB 2: Headers */}
         {activeTab === "headers" && (
           <div className="flex flex-col gap-3">
             <label className="text-xs font-semibold text-slate-700">
@@ -138,7 +132,6 @@ export function NodeInspectorDrawer({ node, onClose }) {
           </div>
         )}
 
-        {/* TAB 3: Trecho de Código */}
         {activeTab === "code" && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -165,7 +158,6 @@ export function NodeInspectorDrawer({ node, onClose }) {
         )}
       </div>
 
-      {/* Footer da Gaveta */}
       <div className="p-3 bg-white border-t border-slate-200 text-center text-[11px] text-slate-500">
         Inspeção ativa do nó no canvas
       </div>
