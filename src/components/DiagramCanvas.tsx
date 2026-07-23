@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import svgPanZoom from "svg-pan-zoom";
+import { NodeInspectorDrawer } from "./NodeInspectorDrawer";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -10,6 +11,7 @@ mermaid.initialize({
 
 export function DiagramCanvas({
   mermaidCode,
+  nodesMetadata,
   onError,
   onRenderSuccess,
   isSidebarOpen,
@@ -19,11 +21,11 @@ export function DiagramCanvas({
   const mainRef = useRef(null);
   const panZoomInstance = useRef(null);
 
-  // Estados para o Live Code Editor
   const [showCodeEditor, setShowCodeEditor] = useState(false);
   const [editableCode, setEditableCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState(null);
 
   // Injeta FontAwesome CDN
   useEffect(() => {
@@ -37,12 +39,10 @@ export function DiagramCanvas({
     }
   }, []);
 
-  // Sincroniza o código vindo da IA com o editor local
   useEffect(() => {
     setEditableCode(mermaidCode);
   }, [mermaidCode]);
 
-  // Monitora alterações do estado de Tela Cheia
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -54,7 +54,6 @@ export function DiagramCanvas({
     };
   }, []);
 
-  // Alterna Modo Tela Cheia
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       if (mainRef.current?.requestFullscreen) {
@@ -67,7 +66,79 @@ export function DiagramCanvas({
     }
   };
 
-  // Funções de Renderização do Mermaid
+  // Conecta os cliques nos nós do SVG com os metadados REAIS gerados pela IA
+  const attachNodeClickListeners = () => {
+    if (!containerRef.current) return;
+    const svgElement = containerRef.current.querySelector("svg");
+    if (!svgElement) return;
+
+    const nodeElements = svgElement.querySelectorAll("g.node, .node");
+    nodeElements.forEach((nodeEl) => {
+      nodeEl.style.cursor = "pointer";
+
+      nodeEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+
+        // Remove destaques anteriores
+        nodeElements.forEach((el) => (el.style.filter = "none"));
+        nodeEl.style.filter = "drop-shadow(0 0 6px rgba(99, 102, 241, 0.8))";
+
+        const svgNodeId = nodeEl.id || "";
+        const fullText = (nodeEl.textContent || "").trim();
+
+        // Procura pelos metadados no objeto retornado pela IA comparando as chaves dos nós
+        let matchedMetadata = null;
+
+        if (nodesMetadata) {
+          // Busca por chave exata ou contida no ID do SVG do Mermaid
+          for (const [key, data] of Object.entries(nodesMetadata)) {
+            if (
+              svgNodeId.includes(key) ||
+              key.toLowerCase().includes(svgNodeId.toLowerCase()) ||
+              fullText
+                .toLowerCase()
+                .includes(data.label?.toLowerCase() || key.toLowerCase())
+            ) {
+              matchedMetadata = {
+                id: key,
+                label: data.label || fullText,
+                category: data.category || "Componente",
+                icon: data.icon || "fa-gears",
+                colorClass:
+                  data.colorClass ||
+                  "bg-indigo-100 text-indigo-800 border-indigo-200",
+                headers: data.headers || ["Content-Type: application/json"],
+                dtoSample:
+                  typeof data.dtoSample === "object"
+                    ? JSON.stringify(data.dtoSample, null, 2)
+                    : data.dtoSample || "{}",
+                codeSnippet:
+                  data.codeSnippet || "// Trecho de código não informado",
+              };
+              break;
+            }
+          }
+        }
+
+        // Fallback genérico apenas se não encontrar correspondência no JSON da IA
+        if (!matchedMetadata) {
+          matchedMetadata = {
+            id: svgNodeId,
+            label: fullText,
+            category: "Bloco de Processamento",
+            icon: "fa-gears",
+            colorClass: "bg-slate-100 text-slate-800 border-slate-200",
+            headers: ["Content-Type: application/json"],
+            dtoSample: JSON.stringify({ nodeText: fullText }, null, 2),
+            codeSnippet: `// Implementação do nó: ${fullText}`,
+          };
+        }
+
+        setSelectedNode(matchedMetadata);
+      });
+    });
+  };
+
   const renderDiagram = async (codeToRender) => {
     if (!codeToRender) return;
 
@@ -102,6 +173,8 @@ export function DiagramCanvas({
             maxZoom: 5,
             zoomScaleSensitivity: 0.2,
           });
+
+          attachNodeClickListeners();
         }
       }
 
@@ -113,19 +186,17 @@ export function DiagramCanvas({
     }
   };
 
-  // Re-renderiza quando o mermaidCode original da IA altera
   useEffect(() => {
     if (mermaidCode) {
       renderDiagram(mermaidCode);
+      setSelectedNode(null);
     }
   }, [mermaidCode]);
 
-  // Aplica edições manuais feitas pelo usuário no Live Editor
   const handleApplyManualEdit = () => {
     renderDiagram(editableCode);
   };
 
-  // Copia o código Mermaid para a área de transferência
   const handleCopyCode = () => {
     if (!editableCode) return;
     navigator.clipboard.writeText(editableCode);
@@ -178,7 +249,7 @@ export function DiagramCanvas({
         backgroundSize: "40px 40px",
       }}
     >
-      {/* Botão de Expandir o Menu (Visível quando recolhido) */}
+      {/* Botão de Expandir Menu */}
       {!isSidebarOpen && (
         <button
           type="button"
@@ -248,7 +319,7 @@ export function DiagramCanvas({
         </button>
       </div>
 
-      {/* Mermaid SVG Canvas */}
+      {/* Canvas SVG Mermaid */}
       <div
         id="mermaid-container"
         ref={containerRef}
@@ -262,14 +333,19 @@ export function DiagramCanvas({
         )}
       </div>
 
-      {/* Painel do Live Code Editor (Gaveta Inferior) */}
+      {/* Gaveta de Inspeção do Nó */}
+      <NodeInspectorDrawer
+        node={selectedNode}
+        onClose={() => setSelectedNode(null)}
+      />
+
+      {/* Painel do Live Code Editor */}
       {showCodeEditor && (
         <div className="absolute bottom-0 left-0 right-0 h-[280px] bg-slate-900 border-t border-slate-800 flex flex-col z-30 shadow-2xl transition-all">
-          {/* Header do Editor */}
           <div className="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
               <i className="fa-solid fa-code text-indigo-400"></i>
-              <span>Editor de Código Mermaid (Edição em Tempo Real)</span>
+              <span>Editor de Código Mermaid</span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -278,7 +354,9 @@ export function DiagramCanvas({
                 className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <i
-                  className={`fa-solid ${copied ? "fa-check text-emerald-400" : "fa-copy"}`}
+                  className={`fa-solid ${
+                    copied ? "fa-check text-emerald-400" : "fa-copy"
+                  }`}
                 ></i>
                 <span>{copied ? "Copiado!" : "Copiar Código"}</span>
               </button>
@@ -302,12 +380,11 @@ export function DiagramCanvas({
             </div>
           </div>
 
-          {/* Textarea do Código */}
           <textarea
             className="flex-1 w-full p-4 bg-slate-900 text-slate-200 font-mono text-xs outline-none resize-none leading-relaxed"
             value={editableCode}
             onChange={(e) => setEditableCode(e.target.value)}
-            placeholder="O código Mermaid gerado pela IA aparecerá aqui. Você pode editá-lo diretamente..."
+            placeholder="O código Mermaid gerado pela IA aparecerá aqui..."
             spellCheck={false}
           ></textarea>
         </div>

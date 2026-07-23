@@ -7,6 +7,11 @@ import {
   HIGH_LEVEL_PROMPT,
   EDGE_CASE_INSTRUCTION,
 } from "./constants/prompts";
+import {
+  COMPLETE_HIGH_LEVEL_PROMPT,
+  COMPLETE_LOW_LEVEL_PROMPT,
+  COMPLETE_LOW_LEVEL_WITH_EDGE_CASES_PROMPT,
+} from "./constants";
 
 export default function App() {
   const [apiKey, setApiKey] = useState("");
@@ -14,10 +19,14 @@ export default function App() {
   const [lowLevelPrompt, setLowLevelPrompt] = useState("");
   const [highLevelPrompt, setHighLevelPrompt] = useState("");
 
-  const [mode, setMode] = useState("low-level"); // 'low-level' | 'high-level'
+  const [mode, setMode] = useState("low-level");
   const [includeEdgeCases, setIncludeEdgeCases] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Guardamos o código Mermaid E os metadados dos nós gerados pela IA
   const [mermaidCode, setMermaidCode] = useState("");
+  const [nodesMetadata, setNodesMetadata] = useState({});
+
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -30,11 +39,6 @@ export default function App() {
     } else {
       setHighLevelPrompt(value);
     }
-  };
-
-  const extractMermaidCode = (text) => {
-    const match = text.match(/```(?:mermaid)?\n([\s\S]*?)```/);
-    return match ? match[1].trim() : text.replace(/^mermaid\n/, "").trim();
   };
 
   const handleGenerate = async () => {
@@ -50,20 +54,20 @@ export default function App() {
     }
 
     setIsLoading(true);
-    setStatusMsg("Analisando o contexto e gerando diagrama...");
+    setStatusMsg("Analisando contexto e gerando metadados reais com a IA...");
 
-    // Seleciona o prompt base
     let selectedSystemPrompt =
-      mode === "low-level" ? LOW_LEVEL_PROMPT : HIGH_LEVEL_PROMPT;
+      mode === "low-level"
+        ? COMPLETE_LOW_LEVEL_PROMPT
+        : COMPLETE_HIGH_LEVEL_PROMPT;
 
-    // Se o modo for Baixo Nível e o usuário ativou o mapeamento de casos de borda
     if (mode === "low-level" && includeEdgeCases) {
-      selectedSystemPrompt += `\n${EDGE_CASE_INSTRUCTION}`;
+      selectedSystemPrompt += `\n${COMPLETE_LOW_LEVEL_WITH_EDGE_CASES_PROMPT}`;
     }
 
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -78,7 +82,10 @@ export default function App() {
                 ],
               },
             ],
-            generationConfig: { temperature: 0.1 },
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: "application/json", // Força resposta estritamente em JSON
+            },
           }),
         },
       );
@@ -89,19 +96,22 @@ export default function App() {
       }
 
       const data = await response.json();
-      const llmOutput = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const rawJsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-      const code = extractMermaidCode(llmOutput || "");
-
-      if (!code) {
-        throw new Error(
-          "O modelo não retornou código Mermaid válido.\nResposta bruta:\n" +
-            llmOutput,
-        );
+      if (!rawJsonText) {
+        throw new Error("O modelo não retornou resposta.");
       }
 
-      setStatusMsg("Renderizando diagrama...");
-      setMermaidCode(code);
+      // Faz o parse do objeto JSON retornado pela IA
+      const parsedData = JSON.parse(rawJsonText);
+
+      if (!parsedData.mermaidCode) {
+        throw new Error("A resposta da IA não contém o campo mermaidCode.");
+      }
+
+      setStatusMsg("Renderizando diagrama e atrelando metadados aos nós...");
+      setMermaidCode(parsedData.mermaidCode);
+      setNodesMetadata(parsedData.nodes || {});
     } catch (error) {
       showErrorModal(error.message || String(error));
     } finally {
@@ -140,8 +150,11 @@ export default function App() {
 
       <DiagramCanvas
         mermaidCode={mermaidCode}
+        nodesMetadata={nodesMetadata}
         onError={showErrorModal}
-        onRenderSuccess={() => setStatusMsg("Diagrama gerado com sucesso!")}
+        onRenderSuccess={() =>
+          setStatusMsg("Diagrama e metadados carregados com sucesso!")
+        }
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
       />
