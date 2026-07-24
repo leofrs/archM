@@ -116,6 +116,84 @@ export default function App() {
     }
   };
 
+  const handleGenerateFromImage = async (base64Image: string) => {
+    if (!apiKey.trim()) {
+      showErrorModal("Por favor, insira a chave da API do Google Gemini no menu lateral.");
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusMsg("Analisando o desenho feito a mão livre com a IA multimodal...");
+
+    let selectedSystemPrompt =
+      mode === "low-level"
+        ? COMPLETE_LOW_LEVEL_PROMPT
+        : COMPLETE_HIGH_LEVEL_PROMPT;
+
+    if (mode === "low-level" && includeEdgeCases) {
+      selectedSystemPrompt += `\n${COMPLETE_LOW_LEVEL_WITH_EDGE_CASES_PROMPT}`;
+    }
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: `${selectedSystemPrompt}\n\nANALISE O DESENHO/ESBOÇO ANEXADO E CONVERTA-O PARA A ESTRUTURA PEDIDA NO CONTRATO JSON:`,
+                  },
+                  {
+                    inlineData: {
+                      mimeType: "image/png",
+                      data: base64Image,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: "application/json",
+            },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || "Erro na chamada da API Multimodal");
+      }
+
+      const data = await response.json();
+      const rawJsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!rawJsonText) {
+        throw new Error("O modelo multimodal não retornou resposta.");
+      }
+
+      const parsedData = JSON.parse(rawJsonText);
+
+      if (!parsedData.mermaidCode) {
+        throw new Error("A resposta da IA não contém o campo mermaidCode.");
+      }
+
+      setStatusMsg("Desenho analisado com sucesso! Renderizando diagrama e metadados...");
+      setMermaidCode(parsedData.mermaidCode);
+      setNodesMetadata(parsedData.nodes || {});
+      setAgentPrompt(parsedData.agentPrompt || "");
+    } catch (error: any) {
+      showErrorModal(error.message || String(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const showErrorModal = (msg: string) => {
     setErrorMessage(msg);
     setStatusMsg("");
@@ -156,6 +234,8 @@ export default function App() {
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         onMermaidCodeChange={setMermaidCode}
+        onAnalyzeDrawing={handleGenerateFromImage}
+        isLoading={isLoading}
       />
     </div>
   );
