@@ -24,6 +24,7 @@ import {
   getNodeStyleByClass,
 } from "../utils/mermaidReactFlowConverter";
 import { QuickNodesPalette, type QuickPreset } from "./QuickNodesPalette";
+import type { BlockDefinition } from "../types/architecture";
 
 interface ReactFlowViewProps {
   mermaidCode: string;
@@ -66,6 +67,14 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
   const [editingNode, setEditingNode] = useState<RFNode | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editClass, setEditClass] = useState("default");
+  const [editExpectedInput, setEditExpectedInput] = useState("");
+  const [editExpectedOutput, setEditExpectedOutput] = useState("");
+  const [editDtoSample, setEditDtoSample] = useState("");
+  const [editHeaders, setEditHeaders] = useState("");
+  const [editPayloadSample, setEditPayloadSample] = useState("");
+  const [modalTab, setModalTab] = useState<"general" | "contract" | "flow">(
+    "general",
+  );
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -119,24 +128,47 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
 
   // Adicionar Nó via Paleta Rápida (Clique ou Drag & Drop)
   const handleAddPresetNode = useCallback(
-    (preset: QuickPreset, position?: { x: number; y: number }) => {
+    (
+      preset: QuickPreset | BlockDefinition,
+      position?: { x: number; y: number },
+    ) => {
       const id = `Node_${Math.random().toString(36).substring(2, 7)}`;
       const targetPos = position || {
         x: 100 + Math.random() * 50,
         y: 100 + Math.random() * 50,
       };
-      const rawText = preset.defaultLabel;
-      const htmlLabel = `<i class='fa-solid ${preset.icon} mr-1.5'></i> ${rawText}`;
+      const rawText =
+        (preset as BlockDefinition).titulo ||
+        (preset as QuickPreset).defaultLabel ||
+        (preset as QuickPreset).name;
+      const icon = preset.icon || "fa-cube";
+      const cssClass = preset.cssClass || "default";
+      const descricao =
+        (preset as BlockDefinition).descricao ||
+        (preset as QuickPreset).descricao;
+      const responsabilidades =
+        (preset as BlockDefinition).responsabilidades ||
+        (preset as QuickPreset).responsabilidades;
+      const fase =
+        (preset as BlockDefinition).fase ||
+        (preset as QuickPreset).fase ||
+        (preset as QuickPreset).category;
+
+      const htmlLabel = `<i class='fa-solid ${icon} mr-1.5'></i> ${rawText}`;
 
       const newNode: RFNode = {
         id,
         data: {
           label: htmlLabel,
           rawLabel: rawText,
-          cssClass: preset.cssClass,
+          cssClass: cssClass,
+          icon: icon,
+          descricao: descricao,
+          responsabilidades: responsabilidades,
+          fase: fase,
         },
         position: targetPos,
-        style: getNodeStyleByClass(preset.cssClass),
+        style: getNodeStyleByClass(cssClass),
       };
 
       setNodes((nds) => [...nds, newNode]);
@@ -199,12 +231,25 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
       rawLabel?: string;
       label?: string;
       cssClass?: string;
+      expectedInput?: string;
+      expectedOutput?: string;
+      dtoSample?: string;
+      headers?: string[] | string;
+      payloadSample?: string;
     };
     setEditingNode(node);
     setEditLabel(
       data.rawLabel || (typeof data.label === "string" ? data.label : node.id),
     );
     setEditClass(data.cssClass || "default");
+    setEditExpectedInput(data.expectedInput || "");
+    setEditExpectedOutput(data.expectedOutput || "");
+    setEditDtoSample(data.dtoSample || "");
+    setEditHeaders(
+      Array.isArray(data.headers) ? data.headers.join(", ") : data.headers || "",
+    );
+    setEditPayloadSample(data.payloadSample || "");
+    setModalTab("general");
   }, []);
 
   const handleSaveNodeEdit = () => {
@@ -213,6 +258,10 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
     const selectedOption = CATEGORY_OPTIONS.find((c) => c.value === editClass);
     const icon = selectedOption ? selectedOption.icon : "fa-cube";
     const htmlLabel = `<i class='fa-solid ${icon} mr-1.5'></i> ${editLabel}`;
+
+    const parsedHeaders = editHeaders
+      ? editHeaders.split(",").map((h) => h.trim()).filter(Boolean)
+      : [];
 
     setNodes((nds) =>
       nds.map((n) => {
@@ -224,6 +273,11 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
               rawLabel: editLabel,
               label: htmlLabel,
               cssClass: editClass,
+              expectedInput: editExpectedInput,
+              expectedOutput: editExpectedOutput,
+              dtoSample: editDtoSample,
+              headers: parsedHeaders,
+              payloadSample: editPayloadSample,
             },
             style: getNodeStyleByClass(editClass),
           };
@@ -351,12 +405,12 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
 
       {/* MODAL DE EDIÇÃO DE BLOCO */}
       {editingNode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-[420px] p-5 flex flex-col gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs animate-in fade-in p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-[480px] p-5 flex flex-col gap-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
                 <i className="fa-solid fa-pen-to-square text-indigo-600"></i>
-                <span>Editar Bloco de Arquitetura</span>
+                <span>Editar Bloco & Contrato Técnico</span>
               </div>
               <button
                 type="button"
@@ -367,35 +421,139 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
               </button>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700">
-                Rótulo / Nome do Bloco:
-              </label>
-              <input
-                type="text"
-                value={editLabel}
-                onChange={(e) => setEditLabel(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                placeholder="Ex: AuthMiddleware: Validar JWT"
-              />
+            {/* Abas do Modal */}
+            <div className="flex border-b border-slate-200 bg-slate-50 rounded-lg p-1 text-xs font-semibold text-slate-600">
+              <button
+                type="button"
+                onClick={() => setModalTab("general")}
+                className={`flex-1 py-1.5 rounded-md text-center cursor-pointer transition-all ${
+                  modalTab === "general"
+                    ? "bg-white text-indigo-600 font-bold shadow-xs"
+                    : "hover:text-slate-900"
+                }`}
+              >
+                🏷️ Identificação
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab("contract")}
+                className={`flex-1 py-1.5 rounded-md text-center cursor-pointer transition-all ${
+                  modalTab === "contract"
+                    ? "bg-white text-indigo-600 font-bold shadow-xs"
+                    : "hover:text-slate-900"
+                }`}
+              >
+                📋 DTO & Headers
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab("flow")}
+                className={`flex-1 py-1.5 rounded-md text-center cursor-pointer transition-all ${
+                  modalTab === "flow"
+                    ? "bg-white text-indigo-600 font-bold shadow-xs"
+                    : "hover:text-slate-900"
+                }`}
+              >
+                📥 Entrada & Saída
+              </button>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700">
-                Categoria / Estilo Visual:
-              </label>
-              <select
-                value={editClass}
-                onChange={(e) => setEditClass(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 bg-white"
-              >
-                {CATEGORY_OPTIONS.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Aba 1: Geral */}
+            {modalTab === "general" && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Rótulo / Nome do Bloco:
+                  </label>
+                  <input
+                    type="text"
+                    value={editLabel}
+                    onChange={(e) => setEditLabel(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                    placeholder="Ex: OrderController: handleCheckout"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Categoria / Estilo Visual:
+                  </label>
+                  <select
+                    value={editClass}
+                    onChange={(e) => setEditClass(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 bg-white cursor-pointer"
+                  >
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Aba 2: Contrato DTO / Headers / Payload */}
+            {modalTab === "contract" && (
+              <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Headers HTTP (separados por vírgula):
+                  </label>
+                  <input
+                    type="text"
+                    value={editHeaders}
+                    onChange={(e) => setEditHeaders(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:outline-none focus:border-indigo-600"
+                    placeholder="Content-Type: application/json, Authorization: Bearer token"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    DTO / Schema Exemplo (JSON):
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={editDtoSample}
+                    onChange={(e) => setEditDtoSample(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono bg-slate-900 text-slate-100 outline-none focus:border-indigo-600 leading-relaxed resize-none"
+                    placeholder={`{\n  "clienteId": "cli_100",\n  "total": 150.00\n}`}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Aba 3: Fluxo de Entrada e Saída Esperada */}
+            {modalTab === "flow" && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    📥 Dado / Entrada Esperada:
+                  </label>
+                  <input
+                    type="text"
+                    value={editExpectedInput}
+                    onChange={(e) => setEditExpectedInput(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600"
+                    placeholder="Ex: Request DTO, Headers, Route Params"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    📤 Resposta / Saída Esperada (Sucesso ou Erro):
+                  </label>
+                  <input
+                    type="text"
+                    value={editExpectedOutput}
+                    onChange={(e) => setEditExpectedOutput(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600"
+                    placeholder="Ex: Response DTO / HTTP 200 OK / HTTP 422 Error"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-2">
               <button

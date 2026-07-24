@@ -18,9 +18,10 @@ export default function App() {
   const [includeEdgeCases, setIncludeEdgeCases] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Guardamos o código Mermaid E os metadados dos nós gerados pela IA
+  // Guardamos o código Mermaid E os metadados dos nós gerados pela IA, além do prompt do agente
   const [mermaidCode, setMermaidCode] = useState("");
   const [nodesMetadata, setNodesMetadata] = useState<Record<string, any>>({});
+  const [agentPrompt, setAgentPrompt] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
@@ -107,6 +108,7 @@ export default function App() {
       setStatusMsg("Renderizando diagrama e atrelando metadados aos nós...");
       setMermaidCode(parsedData.mermaidCode);
       setNodesMetadata(parsedData.nodes || {});
+      setAgentPrompt(parsedData.agentPrompt || "");
     } catch (error: any) {
       showErrorModal(error.message || String(error));
     } finally {
@@ -146,6 +148,7 @@ export default function App() {
       <DiagramCanvas
         mermaidCode={mermaidCode}
         nodesMetadata={nodesMetadata}
+        agentPrompt={agentPrompt}
         onError={showErrorModal}
         onRenderSuccess={() =>
           setStatusMsg("Diagrama e metadados carregados com sucesso!")
@@ -157,4 +160,3 @@ export default function App() {
     </div>
   );
 }
-

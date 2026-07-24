@@ -98,7 +98,8 @@ Retorne exclusivamente um objeto JSON válido, sem Markdown ou texto externo:
       "dtoSample": "string contendo JSON válido",
       "codeSnippet": "string"
     }
-  }
+  },
+  "agentPrompt": "string contendo prompt detalhado em Markdown para instruir um agente de IA em um harness a implementar a arquitetura visualizada"
 }
 
 CONSTRUÇÃO DO MERMAID
@@ -168,15 +169,24 @@ METADADOS
 - dtoSample: string contendo JSON contextual válido; use "{}" quando não aplicável.
 - codeSnippet: trecho curto e específico do nó, sem Markdown e sem segredos.
 
+PROMPT DO AGENTE (HARNESS)
+No campo agentPrompt, forneça um prompt estruturado em formato Markdown pronto para ser enviado a um agente de IA de código (ex: Claude Code, AGY, Cursor). Deve conter:
+1. Objetivo Geral da Implementação.
+2. Descrição detalhada de cada Nó/Componente e suas responsabilidades.
+3. Contratos DTO, Payloads JSON e Headers.
+4. Regras de Fluxo das Arestas (Caminho Feliz FP, Alternativos FA, Erros FE e Recuperações FR).
+5. Passo a passo para o agente de IA escrever a solução no código.
+
 VALIDAÇÃO SILENCIOSA
 Antes de responder, confirme:
-1. Há somente JSON válido com mermaidCode e nodes na raiz.
+1. Há somente JSON válido com mermaidCode, nodes e agentPrompt na raiz.
 2. mermaidCode começa com graph TD e não contém subgraph.
 3. Todos os nós são independentes, conectados e têm IDs válidos.
 4. Mermaid e nodes possuem exatamente os mesmos IDs.
 5. Todos os nós possuem os 9 campos obrigatórios.
-6. Decisões têm saídas explícitas e todos os fluxos possuem desfecho.
-7. dtoSample contém JSON válido como string.
-8. classDef, linkStyle, mermaidClass, icon e colorClass são consistentes.
-9. Nenhuma informação contradiz ou excede o contexto fornecido.
+6. agentPrompt é uma string válida e detalhada contendo o prompt para o agente de IA.
+7. Decisões têm saídas explícitas e todos os fluxos possuem desfecho.
+8. dtoSample contém JSON válido como string.
+9. classDef, linkStyle, mermaidClass, icon e colorClass são consistentes.
+10. Nenhuma informação contradiz ou excede o contexto fornecido.
 `;

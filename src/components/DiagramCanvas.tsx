@@ -3,6 +3,7 @@ import mermaid from "mermaid";
 import svgPanZoom from "svg-pan-zoom";
 import { NodeInspectorDrawer, type InspectorNode } from "./NodeInspectorDrawer";
 import { ReactFlowView } from "./ReactFlowView";
+import { AgentPromptViewer } from "./AgentPromptViewer";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -13,6 +14,7 @@ mermaid.initialize({
 interface DiagramCanvasProps {
   mermaidCode: string;
   nodesMetadata?: Record<string, any>;
+  agentPrompt?: string;
   onError: (msg: string) => void;
   onRenderSuccess: () => void;
   isSidebarOpen: boolean;
@@ -23,6 +25,7 @@ interface DiagramCanvasProps {
 export function DiagramCanvas({
   mermaidCode,
   nodesMetadata,
+  agentPrompt,
   onError,
   onRenderSuccess,
   isSidebarOpen,
@@ -91,7 +94,9 @@ export function DiagramCanvas({
       htmlEl.addEventListener("click", (e: MouseEvent) => {
         e.stopPropagation();
 
-        nodeElements.forEach((el) => ((el as HTMLElement).style.filter = "none"));
+        nodeElements.forEach(
+          (el) => ((el as HTMLElement).style.filter = "none"),
+        );
         htmlEl.style.filter = "drop-shadow(0 0 6px rgba(99, 102, 241, 0.8))";
 
         const svgNodeId = htmlEl.id || "";
@@ -123,6 +128,8 @@ export function DiagramCanvas({
                     : data.dtoSample || "{}",
                 codeSnippet:
                   data.codeSnippet || "// Trecho de código não informado",
+                expectedInput: data.expectedInput,
+                expectedOutput: data.expectedOutput,
               };
               break;
             }
@@ -366,6 +373,15 @@ export function DiagramCanvas({
         </button>
       </div>
 
+      {/* PROMPT DO AGENTE (HARNESS) - PAINEL SOBREPOSTO EXPANSÍVEL */}
+      {agentPrompt && (
+        <div className="absolute top-18 right-2 z-20 pointer-events-none flex justify-center">
+          <div className="w-full max-w-5xl pointer-events-auto px-2">
+            <AgentPromptViewer prompt={agentPrompt} />
+          </div>
+        </div>
+      )}
+
       {/* CONTEÚDO 1: VISÃO MERMAID SVG */}
       {viewMode === "mermaid" && (
         <div
@@ -456,4 +472,3 @@ export function DiagramCanvas({
     </main>
   );
 }
-

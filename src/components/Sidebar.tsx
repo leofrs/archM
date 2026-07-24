@@ -38,12 +38,12 @@ export function Sidebar({
   includeEdgeCases,
   setIncludeEdgeCases,
 }: SidebarProps) {
-  if (!isSidebarOpen) return null;
-
   const isLowLevel = mode === "low-level";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileBadge, setFileBadge] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+
+  if (!isSidebarOpen) return null;
 
   // --- PARSER 1: OpenAPI / Swagger ---
   const formatOpenAPISpec = (spec: any) => {
