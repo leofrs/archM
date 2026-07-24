@@ -1,12 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { DiagramCanvas } from "./components/DiagramCanvas";
 import { ErrorModal } from "./components/ErrorModal";
-import {
-  LOW_LEVEL_PROMPT,
-  HIGH_LEVEL_PROMPT,
-  EDGE_CASE_INSTRUCTION,
-} from "./constants/prompts";
 import {
   COMPLETE_HIGH_LEVEL_PROMPT,
   COMPLETE_LOW_LEVEL_PROMPT,
@@ -19,13 +14,13 @@ export default function App() {
   const [lowLevelPrompt, setLowLevelPrompt] = useState("");
   const [highLevelPrompt, setHighLevelPrompt] = useState("");
 
-  const [mode, setMode] = useState("low-level");
+  const [mode, setMode] = useState<"low-level" | "high-level">("low-level");
   const [includeEdgeCases, setIncludeEdgeCases] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Guardamos o código Mermaid E os metadados dos nós gerados pela IA
   const [mermaidCode, setMermaidCode] = useState("");
-  const [nodesMetadata, setNodesMetadata] = useState({});
+  const [nodesMetadata, setNodesMetadata] = useState<Record<string, any>>({});
 
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
@@ -33,7 +28,7 @@ export default function App() {
 
   const currentPrompt = mode === "low-level" ? lowLevelPrompt : highLevelPrompt;
 
-  const setCurrentPrompt = (value) => {
+  const setCurrentPrompt = (value: string) => {
     if (mode === "low-level") {
       setLowLevelPrompt(value);
     } else {
@@ -112,14 +107,14 @@ export default function App() {
       setStatusMsg("Renderizando diagrama e atrelando metadados aos nós...");
       setMermaidCode(parsedData.mermaidCode);
       setNodesMetadata(parsedData.nodes || {});
-    } catch (error) {
+    } catch (error: any) {
       showErrorModal(error.message || String(error));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const showErrorModal = (msg) => {
+  const showErrorModal = (msg: string) => {
     setErrorMessage(msg);
     setStatusMsg("");
   };
@@ -157,7 +152,9 @@ export default function App() {
         }
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
+        onMermaidCodeChange={setMermaidCode}
       />
     </div>
   );
 }
+

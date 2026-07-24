@@ -1,4 +1,10 @@
-export function ErrorModal({ isOpen, errorText, onClose }) {
+interface ErrorModalProps {
+  isOpen: boolean;
+  errorText: string;
+  onClose: () => void;
+}
+
+export function ErrorModal({ isOpen, errorText, onClose }: ErrorModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -37,3 +43,4 @@ export function ErrorModal({ isOpen, errorText, onClose }) {
     </div>
   );
 }
+

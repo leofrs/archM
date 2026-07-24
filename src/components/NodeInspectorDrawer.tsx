@@ -1,12 +1,28 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
-export function NodeInspectorDrawer({ node, onClose }) {
+export interface InspectorNode {
+  id: string;
+  label: string;
+  category: string;
+  icon: string;
+  colorClass: string;
+  headers: string[];
+  dtoSample: string;
+  codeSnippet: string;
+}
+
+interface NodeInspectorDrawerProps {
+  node: InspectorNode | null;
+  onClose: () => void;
+}
+
+export function NodeInspectorDrawer({ node, onClose }: NodeInspectorDrawerProps) {
   const [activeTab, setActiveTab] = useState("dto");
   const [copiedText, setCopiedText] = useState(false);
 
   if (!node) return null;
 
-  const handleCopy = (text) => {
+  const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedText(true);
     setTimeout(() => setCopiedText(false), 2000);
@@ -164,3 +180,4 @@ export function NodeInspectorDrawer({ node, onClose }) {
     </aside>
   );
 }
+

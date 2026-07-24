@@ -1,4 +1,27 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
+
+interface SidebarProps {
+  apiKey: string;
+  setApiKey: (key: string) => void;
+  promptInput: string;
+  setPromptInput: (input: string) => void;
+  isLoading: boolean;
+  onGenerate: () => void;
+  statusMsg: string;
+  mode: "low-level" | "high-level";
+  setMode: (mode: "low-level" | "high-level") => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (open: boolean) => void;
+  includeEdgeCases: boolean;
+  setIncludeEdgeCases: (include: boolean) => void;
+}
+
+interface PostmanRequestItem {
+  name: string;
+  method: string;
+  url: string;
+  body: string;
+}
 
 export function Sidebar({
   apiKey,
@@ -14,16 +37,16 @@ export function Sidebar({
   setIsSidebarOpen,
   includeEdgeCases,
   setIncludeEdgeCases,
-}) {
+}: SidebarProps) {
   if (!isSidebarOpen) return null;
 
   const isLowLevel = mode === "low-level";
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileBadge, setFileBadge] = useState("");
   const [isDragging, setIsDragging] = useState(false);
 
   // --- PARSER 1: OpenAPI / Swagger ---
-  const formatOpenAPISpec = (spec) => {
+  const formatOpenAPISpec = (spec: any) => {
     let output = `[ESPECIFICAÇÃO OPENAPI / SWAGGER IMPORTADA]\n`;
     output += `Título: ${spec.info?.title || "API Especificação"}\n`;
     if (spec.info?.description) {
@@ -32,8 +55,8 @@ export function Sidebar({
     output += `\nENDPOINTS E FLUXOS DETECTADOS:\n`;
 
     if (spec.paths) {
-      Object.entries(spec.paths).forEach(([path, methods]) => {
-        Object.entries(methods).forEach(([method, details]) => {
+      Object.entries(spec.paths).forEach(([path, methods]: [string, any]) => {
+        Object.entries(methods).forEach(([method, details]: [string, any]) => {
           if (
             ["get", "post", "put", "delete", "patch"].includes(
               method.toLowerCase(),
@@ -58,7 +81,7 @@ export function Sidebar({
   };
 
   // --- PARSER 2: Postman Collection ---
-  const extractPostmanRequests = (items, result = []) => {
+  const extractPostmanRequests = (items: any[], result: PostmanRequestItem[] = []): PostmanRequestItem[] => {
     if (!Array.isArray(items)) return result;
 
     for (const item of items) {
@@ -92,7 +115,7 @@ export function Sidebar({
     return result;
   };
 
-  const formatPostmanCollection = (data) => {
+  const formatPostmanCollection = (data: any) => {
     const requests = extractPostmanRequests(data.item);
     let output = `[COLEÇÃO POSTMAN IMPORTADA]\n`;
     output += `Nome da Coleção: ${data.info?.name || "Postman Collection"}\n`;
@@ -113,15 +136,15 @@ export function Sidebar({
   };
 
   // --- PARSER 3: Insomnia Export ---
-  const formatInsomniaCollection = (data) => {
+  const formatInsomniaCollection = (data: any) => {
     const requests = (data.resources || []).filter(
-      (r) => r._type === "request",
+      (r: any) => r._type === "request",
     );
     let output = `[COLEÇÃO INSOMNIA IMPORTADA]\n`;
     output += `Total de Requisições: ${requests.length}\n\n`;
     output += `REQUISIÇÕES E ROTAS DETECTADAS:\n`;
 
-    requests.forEach((req, idx) => {
+    requests.forEach((req: any, idx: number) => {
       const method = (req.method || "GET").toUpperCase();
       const name = req.name || "Sem nome";
       const url = req.url || "";
@@ -138,13 +161,13 @@ export function Sidebar({
     };
   };
 
-  const processFile = (file) => {
+  const processFile = (file?: File) => {
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result;
-      if (!content) return;
+      if (!content || typeof content !== "string") return;
 
       let processedText = content;
       let badgeText = `Arquivo "${file.name}" importado`;
@@ -168,7 +191,7 @@ export function Sidebar({
           } else if (
             parsed._type === "export" ||
             (Array.isArray(parsed.resources) &&
-              parsed.resources.some((r) => r._type === "request"))
+              parsed.resources.some((r: any) => r._type === "request"))
           ) {
             const res = formatInsomniaCollection(parsed);
             processedText = res.text;
@@ -186,12 +209,12 @@ export function Sidebar({
     reader.readAsText(file);
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     processFile(file);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   };
@@ -200,7 +223,7 @@ export function Sidebar({
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
@@ -419,3 +442,4 @@ export function Sidebar({
     </aside>
   );
 }
+

@@ -1,13 +1,33 @@
-import { MarkerType } from "@xyflow/react";
+import { MarkerType, type Node as RFNode, type Edge as RFEdge } from "@xyflow/react";
 
-function getNodeStyleByClass(cssClass) {
+export interface NodeData {
+  label: string;
+  rawLabel?: string;
+  cssClass?: string;
+}
+
+export interface ParsedMermaidNode {
+  id: string;
+  label: string;
+  cssClass: string;
+}
+
+export interface ParsedMermaidEdge {
+  id: string;
+  source: string;
+  target: string;
+  arrow: string;
+  label: string;
+}
+
+export function getNodeStyleByClass(cssClass?: string) {
   const base = {
     padding: "12px 16px",
     borderRadius: "10px",
     fontSize: "12px",
     fontWeight: "600",
     minWidth: "160px",
-    textAlign: "center",
+    textAlign: "center" as const,
     boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
   };
 
@@ -64,11 +84,11 @@ function getNodeStyleByClass(cssClass) {
   }
 }
 
-export function mermaidToReactFlow(mermaidCode) {
+export function mermaidToReactFlow(mermaidCode: string): { nodes: RFNode[]; edges: RFEdge[] } {
   if (!mermaidCode) return { nodes: [], edges: [] };
 
-  const nodesMap = new Map();
-  const edgesList = [];
+  const nodesMap = new Map<string, ParsedMermaidNode>();
+  const edgesList: ParsedMermaidEdge[] = [];
   const lines = mermaidCode.split("\n");
 
   const nodeRegex = /^\s*([A-Za-z0-9_]+)\["([^"]+)"\](?::\:\:([A-Za-z0-9_]+))?/;
@@ -107,25 +127,25 @@ export function mermaidToReactFlow(mermaidCode) {
     }
   });
 
-  const inDegree = new Map();
+  const inDegree = new Map<string, number>();
   nodesMap.forEach((_, id) => inDegree.set(id, 0));
   edgesList.forEach((e) =>
     inDegree.set(e.target, (inDegree.get(e.target) || 0) + 1),
   );
 
-  const levels = new Map();
+  const levels = new Map<number, string[]>();
   let currentLevel = 0;
-  let currentQueue = Array.from(nodesMap.keys()).filter(
+  let currentQueue: string[] = Array.from(nodesMap.keys()).filter(
     (id) => inDegree.get(id) === 0,
   );
   if (currentQueue.length === 0 && nodesMap.size > 0) {
     currentQueue = [Array.from(nodesMap.keys())[0]];
   }
 
-  const visited = new Set();
+  const visited = new Set<string>();
   while (currentQueue.length > 0) {
     levels.set(currentLevel, currentQueue);
-    const nextQueue = [];
+    const nextQueue: string[] = [];
 
     currentQueue.forEach((id) => {
       visited.add(id);
@@ -145,14 +165,15 @@ export function mermaidToReactFlow(mermaidCode) {
   nodesMap.forEach((_, id) => {
     if (!visited.has(id)) {
       if (!levels.has(currentLevel)) levels.set(currentLevel, []);
-      levels.get(currentLevel).push(id);
+      levels.get(currentLevel)!.push(id);
     }
   });
 
-  const rfNodes = [];
+  const rfNodes: RFNode[] = [];
   levels.forEach((nodeIds, levelIdx) => {
     nodeIds.forEach((id, indexInLevel) => {
       const nodeData = nodesMap.get(id);
+      if (!nodeData) return;
       const totalWidth = nodeIds.length * 240;
       const startX = -(totalWidth / 2) + 120;
       const x = startX + indexInLevel * 240;
@@ -171,7 +192,7 @@ export function mermaidToReactFlow(mermaidCode) {
     });
   });
 
-  const rfEdges = edgesList.map((e) => ({
+  const rfEdges: RFEdge[] = edgesList.map((e) => ({
     id: e.id,
     source: e.source,
     target: e.target,
@@ -184,7 +205,7 @@ export function mermaidToReactFlow(mermaidCode) {
   return { nodes: rfNodes, edges: rfEdges };
 }
 
-export function reactFlowToMermaid(nodes, edges) {
+export function reactFlowToMermaid(nodes: RFNode[], edges: RFEdge[]): string {
   let mermaid = `graph TD\n`;
   mermaid += `    classDef default fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px,color:#0f172a,rx:8px,ry:8px;\n`;
   mermaid += `    classDef error fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#7f1d1d;\n`;
@@ -194,8 +215,9 @@ export function reactFlowToMermaid(nodes, edges) {
   mermaid += `    classDef queue fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#9d174d;\n\n`;
 
   nodes.forEach((node) => {
-    const label = node.data?.rawLabel || node.data?.label || node.id;
-    const cssClass = node.data?.cssClass || "default";
+    const data = node.data as { rawLabel?: string; label?: string; cssClass?: string } | undefined;
+    const label = data?.rawLabel || (typeof data?.label === "string" ? data.label : node.id);
+    const cssClass = data?.cssClass || "default";
     mermaid += `    ${node.id}["${label}"]:::${cssClass}\n`;
   });
 
@@ -209,3 +231,4 @@ export function reactFlowToMermaid(nodes, edges) {
 
   return mermaid;
 }
+

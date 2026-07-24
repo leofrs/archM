@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import svgPanZoom from "svg-pan-zoom";
-import { NodeInspectorDrawer } from "./NodeInspectorDrawer";
+import { NodeInspectorDrawer, type InspectorNode } from "./NodeInspectorDrawer";
 import { ReactFlowView } from "./ReactFlowView";
 
 mermaid.initialize({
@@ -10,6 +10,16 @@ mermaid.initialize({
   securityLevel: "loose",
 });
 
+interface DiagramCanvasProps {
+  mermaidCode: string;
+  nodesMetadata?: Record<string, any>;
+  onError: (msg: string) => void;
+  onRenderSuccess: () => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (open: boolean) => void;
+  onMermaidCodeChange?: (newCode: string) => void;
+}
+
 export function DiagramCanvas({
   mermaidCode,
   nodesMetadata,
@@ -17,17 +27,18 @@ export function DiagramCanvas({
   onRenderSuccess,
   isSidebarOpen,
   setIsSidebarOpen,
-}) {
-  const containerRef = useRef(null);
-  const mainRef = useRef(null);
-  const panZoomInstance = useRef(null);
+  onMermaidCodeChange,
+}: DiagramCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const panZoomInstance = useRef<any>(null);
 
-  const [viewMode, setViewMode] = useState("mermaid");
+  const [viewMode, setViewMode] = useState<"mermaid" | "reactflow">("mermaid");
   const [showCodeEditor, setShowCodeEditor] = useState(false);
   const [editableCode, setEditableCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedNode, setSelectedNode] = useState<InspectorNode | null>(null);
 
   useEffect(() => {
     if (!document.getElementById("font-awesome-cdn")) {
@@ -73,19 +84,20 @@ export function DiagramCanvas({
     if (!svgElement) return;
 
     const nodeElements = svgElement.querySelectorAll("g.node, .node");
-    nodeElements.forEach((nodeEl) => {
-      nodeEl.style.cursor = "pointer";
+    nodeElements.forEach((nodeEl: Element) => {
+      const htmlEl = nodeEl as HTMLElement;
+      htmlEl.style.cursor = "pointer";
 
-      nodeEl.addEventListener("click", (e) => {
+      htmlEl.addEventListener("click", (e: MouseEvent) => {
         e.stopPropagation();
 
-        nodeElements.forEach((el) => (el.style.filter = "none"));
-        nodeEl.style.filter = "drop-shadow(0 0 6px rgba(99, 102, 241, 0.8))";
+        nodeElements.forEach((el) => ((el as HTMLElement).style.filter = "none"));
+        htmlEl.style.filter = "drop-shadow(0 0 6px rgba(99, 102, 241, 0.8))";
 
-        const svgNodeId = nodeEl.id || "";
-        const fullText = (nodeEl.textContent || "").trim();
+        const svgNodeId = htmlEl.id || "";
+        const fullText = (htmlEl.textContent || "").trim();
 
-        let matchedMetadata = null;
+        let matchedMetadata: InspectorNode | null = null;
 
         if (nodesMetadata) {
           for (const [key, data] of Object.entries(nodesMetadata)) {
@@ -135,7 +147,7 @@ export function DiagramCanvas({
     });
   };
 
-  const renderDiagram = async (codeToRender) => {
+  const renderDiagram = async (codeToRender: string) => {
     if (!codeToRender) return;
 
     try {
@@ -175,7 +187,7 @@ export function DiagramCanvas({
       }
 
       onRenderSuccess();
-    } catch (e) {
+    } catch (e: any) {
       onError(
         `Erro de sintaxe no Mermaid: ${e.message}\n\nCódigo Atual:\n${codeToRender}`,
       );
@@ -189,12 +201,18 @@ export function DiagramCanvas({
     }
   }, [mermaidCode, viewMode]);
 
-  const handleSaveFromReactFlow = (newMermaidCode) => {
+  const handleSaveFromReactFlow = (newMermaidCode: string) => {
     setEditableCode(newMermaidCode);
+    if (onMermaidCodeChange) {
+      onMermaidCodeChange(newMermaidCode);
+    }
     renderDiagram(newMermaidCode);
   };
 
   const handleApplyManualEdit = () => {
+    if (onMermaidCodeChange) {
+      onMermaidCodeChange(editableCode);
+    }
     renderDiagram(editableCode);
   };
 
@@ -438,3 +456,4 @@ export function DiagramCanvas({
     </main>
   );
 }
+

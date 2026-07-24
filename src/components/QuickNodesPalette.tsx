@@ -1,6 +1,16 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
-export const QUICK_PRESETS = [
+export interface QuickPreset {
+  id: string;
+  name: string;
+  icon: string;
+  cssClass: string;
+  defaultLabel: string;
+  category: string;
+  color: string;
+}
+
+export const QUICK_PRESETS: QuickPreset[] = [
   {
     id: "middleware",
     name: "Middleware",
@@ -84,15 +94,19 @@ export const QUICK_PRESETS = [
   },
 ];
 
-export function QuickNodesPalette({ onAddNode }) {
-  const [isOpen, setIsOpen] = useState(true);
+interface QuickNodesPaletteProps {
+  onAddNode: (preset: QuickPreset) => void;
+}
 
-  const handleDragStart = (e, preset) => {
+export function QuickNodesPalette({ onAddNode }: QuickNodesPaletteProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleDragStart = (e: React.DragEvent, preset: QuickPreset) => {
     e.dataTransfer.setData("application/json", JSON.stringify(preset));
   };
 
   return (
-    <div className="absolute bottom-5 left-5 z-20 flex flex-col items-start transition-all">
+    <div className="absolute bottom-12 left-14 z-20 flex flex-col items-start transition-all">
       {/* Botão Toggle da Paleta */}
       <button
         type="button"
