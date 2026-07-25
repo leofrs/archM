@@ -336,9 +336,53 @@ export function NodeModal({
                         </div>
                       )}
                     </div>
+                  ) : (node.dtoSample && node.dtoSample !== "{}" && node.dtoSample !== "") || (node.headers && node.headers.length > 0) ? (
+                    <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-xl flex flex-col gap-3 text-xs shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+                        <span className="font-bold text-indigo-950 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                          <i className="fa-solid fa-file-contract text-indigo-600"></i>
+                          Resumo do Contrato de Dados
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("contract")}
+                          className="text-xs text-indigo-600 font-semibold hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>Ver Contrato DTO</span>
+                          <i className="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                      </div>
+
+                      {node.headers && node.headers.length > 0 && (
+                        <div>
+                          <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider block mb-1">
+                            🌐 Headers HTTP:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {node.headers.map((h, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-white border border-indigo-200 rounded text-[11px] font-mono text-slate-800">
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {node.dtoSample && node.dtoSample !== "{}" && node.dtoSample !== "" && (
+                        <div>
+                          <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider block mb-1">
+                            📄 Exemplo de Payload DTO:
+                          </span>
+                          <pre className="p-2.5 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-lg max-h-28 overflow-y-auto">
+                            {node.dtoSample}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <div className="p-4 bg-slate-100/70 border border-slate-200 rounded-xl text-xs text-slate-500 italic text-center">
-                      Nenhuma especificação de Entrada/Saída definida para este nó.
+                    <div className="p-4 bg-slate-100/70 border border-slate-200 rounded-xl text-xs text-slate-500 italic text-center flex flex-col items-center gap-1">
+                      <i className="fa-solid fa-circle-info text-slate-400 text-base"></i>
+                      <span>Nenhuma especificação de Entrada/Saída definida para este nó.</span>
                     </div>
                   )}
                 </>

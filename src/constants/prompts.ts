@@ -102,6 +102,8 @@ Retorne exclusivamente um objeto JSON válido, sem Markdown ou texto externo:
       "mermaidClass": "string",
       "icon": "fa-icon",
       "colorClass": "classes Tailwind",
+      "expectedInput": "string com descrição concisa da entrada esperada",
+      "expectedOutput": "string com descrição concisa da saída/resposta esperada",
       "headers": ["string"],
       "dtoSample": "string contendo JSON válido",
       "codeSnippet": "string"
@@ -182,6 +184,8 @@ METADADOS
 - mermaidClass: exatamente a classe usada no Mermaid.
 - icon: exatamente o ícone do Mermaid, como fa-route.
 - colorClass: classe Tailwind correspondente à categoria.
+- expectedInput: descrição concisa da entrada esperada (dados, DTO, eventos, parâmetros).
+- expectedOutput: descrição concisa da saída/resposta esperada (HTTP status, DTO de resposta, eventos emitidos).
 - headers: apenas headers relevantes; caso contrário, []. Nunca use segredos reais.
 - dtoSample: string contendo JSON contextual válido; use "{}" quando não aplicável.
 - codeSnippet: trecho curto e específico do nó, sem Markdown e sem segredos.
