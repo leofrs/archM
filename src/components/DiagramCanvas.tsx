@@ -79,6 +79,12 @@ export function DiagramCanvas({
   }, [agentPrompt]);
 
   useEffect(() => {
+    if (mermaidSubMode === "sequence" && viewMode === "reactflow") {
+      setViewMode("mermaid");
+    }
+  }, [mermaidSubMode, viewMode]);
+
+  useEffect(() => {
     if (!document.getElementById("font-awesome-cdn")) {
       const link = document.createElement("link");
       link.id = "font-awesome-cdn";
@@ -353,20 +359,22 @@ export function DiagramCanvas({
               <span className="hidden sm:inline">Diagrama </span>
               <span>Mermaid</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("reactflow")}
-              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 shrink-0 ${
-                viewMode === "reactflow"
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <i className="fa-solid fa-vector-square"></i>
-              <span className="hidden md:inline">Editor Interativo (</span>
-              <span>React Flow</span>
-              <span className="hidden md:inline">)</span>
-            </button>
+            {mermaidSubMode !== "sequence" && (
+              <button
+                type="button"
+                onClick={() => setViewMode("reactflow")}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 shrink-0 ${
+                  viewMode === "reactflow"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <i className="fa-solid fa-vector-square"></i>
+                <span className="hidden md:inline">Editor Interativo (</span>
+                <span>React Flow</span>
+                <span className="hidden md:inline">)</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setViewMode("excalidraw")}
