@@ -153,19 +153,19 @@ export function NodeModal({
     : node.colorClass || "bg-indigo-100 text-indigo-800 border-indigo-200";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Cabeçalho do Modal */}
-        <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 grid place-items-center text-base shrink-0">
+        <div className="p-3 sm:p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 overflow-hidden">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 grid place-items-center text-sm sm:text-base shrink-0">
               <i className={`fa-solid ${currentIcon}`}></i>
             </div>
             <div className="truncate">
-              <div className="text-sm font-bold truncate text-slate-100">
+              <div className="text-xs sm:text-sm font-bold truncate text-slate-100">
                 {isEditable ? editLabel || node.id : node.label}
               </div>
-              <div className="text-[11px] text-slate-400 uppercase font-semibold tracking-wider flex items-center gap-2">
+              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold tracking-wider flex items-center gap-2">
                 <span>{isEditable ? selectedCategoryOpt?.categoryName || node.category : node.category}</span>
                 <span className="font-mono text-slate-500">({node.id})</span>
               </div>
@@ -183,21 +183,21 @@ export function NodeModal({
         </div>
 
         {/* Tag e ID Banner */}
-        <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
-          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${currentColorClass}`}>
-            <i className={`fa-solid ${currentIcon} mr-1.5`}></i>
+        <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
+          <span className={`text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 rounded-full border ${currentColorClass}`}>
+            <i className={`fa-solid ${currentIcon} mr-1`}></i>
             {isEditable ? selectedCategoryOpt?.categoryName || node.category : node.category}
           </span>
-          <span className="text-xs text-slate-500 font-mono">
+          <span className="text-[11px] sm:text-xs text-slate-500 font-mono">
             Nó ID: <strong className="text-slate-700">{node.id}</strong>
           </span>
         </div>
 
         {/* Navegação por Abas */}
-        <div className="flex border-b border-slate-200 bg-white text-xs font-semibold text-slate-600 shrink-0">
+        <div className="flex border-b border-slate-200 bg-white text-[11px] sm:text-xs font-semibold text-slate-600 shrink-0">
           <button
             type="button"
-            className={`flex-1 py-2.5 text-center cursor-pointer border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 sm:py-2.5 text-center cursor-pointer border-b-2 transition-colors flex items-center justify-center gap-1 sm:gap-1.5 ${
               activeTab === "general"
                 ? "border-indigo-600 text-indigo-600 font-bold bg-indigo-50/40"
                 : "border-transparent hover:text-slate-900"
@@ -205,11 +205,12 @@ export function NodeModal({
             onClick={() => setActiveTab("general")}
           >
             <i className="fa-solid fa-circle-info"></i>
-            <span>Identificação & Fluxo</span>
+            <span className="hidden sm:inline">Identificação & Fluxo</span>
+            <span className="sm:hidden">Geral</span>
           </button>
           <button
             type="button"
-            className={`flex-1 py-2.5 text-center cursor-pointer border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 sm:py-2.5 text-center cursor-pointer border-b-2 transition-colors flex items-center justify-center gap-1 sm:gap-1.5 ${
               activeTab === "contract"
                 ? "border-indigo-600 text-indigo-600 font-bold bg-indigo-50/40"
                 : "border-transparent hover:text-slate-900"
@@ -217,11 +218,12 @@ export function NodeModal({
             onClick={() => setActiveTab("contract")}
           >
             <i className="fa-solid fa-file-code"></i>
-            <span>Contrato DTO & Headers</span>
+            <span className="hidden sm:inline">Contrato DTO & Headers</span>
+            <span className="sm:hidden">Contrato</span>
           </button>
           <button
             type="button"
-            className={`flex-1 py-2.5 text-center cursor-pointer border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 sm:py-2.5 text-center cursor-pointer border-b-2 transition-colors flex items-center justify-center gap-1 sm:gap-1.5 ${
               activeTab === "code"
                 ? "border-indigo-600 text-indigo-600 font-bold bg-indigo-50/40"
                 : "border-transparent hover:text-slate-900"
@@ -229,7 +231,8 @@ export function NodeModal({
             onClick={() => setActiveTab("code")}
           >
             <i className="fa-solid fa-code"></i>
-            <span>Código / Implementação</span>
+            <span className="hidden sm:inline">Código / Implementação</span>
+            <span className="sm:hidden">Código</span>
           </button>
         </div>
 

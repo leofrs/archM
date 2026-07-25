@@ -267,7 +267,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
       <LoadingModal isOpen={isLoading} statusMsg={statusMsg} />
 
       <ErrorModal
@@ -275,6 +275,15 @@ export default function App() {
         errorText={errorMessage}
         onClose={() => setErrorMessage("")}
       />
+
+      {/* Backdrop para fechar Sidebar em telas móveis/tablets (< 1024px) */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 lg:hidden cursor-pointer transition-opacity"
+          title="Fechar menu lateral"
+        />
+      )}
 
       <Sidebar
         apiKey={apiKey}

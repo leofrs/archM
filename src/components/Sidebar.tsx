@@ -239,7 +239,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="w-[380px] shrink-0 bg-white border-r border-slate-200 flex flex-col p-5 z-10 shadow-sm relative transition-all duration-300">
+    <aside className="fixed inset-y-0 left-0 z-40 w-[85vw] max-w-[380px] lg:relative lg:w-[380px] lg:z-10 shrink-0 bg-white border-r border-slate-200 flex flex-col p-4 sm:p-5 shadow-2xl lg:shadow-sm transition-all duration-300 overflow-y-auto">
       {/* Header com Botão de Retração */}
       <div className="flex items-center justify-between mb-5">
         <div className="text-lg font-bold flex items-center gap-2.5 text-slate-900">
@@ -366,7 +366,7 @@ export function Sidebar({
         {fileBadge && (
           <div className="flex items-center justify-between px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-700">
             <span
-              className="truncate max-w-[280px] font-medium"
+              className="truncate max-w-[200px] sm:max-w-[280px] font-medium"
               title={fileBadge}
             >
               <i className="fa-solid fa-circle-check text-emerald-500 mr-1.5"></i>

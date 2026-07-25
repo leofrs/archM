@@ -54,8 +54,12 @@ export function DiagramCanvas({
   const panZoomInstance = useRef<any>(null);
   const excalidrawRef = useRef<ExcalidrawViewRef>(null);
 
-  const [viewMode, setViewMode] = useState<"mermaid" | "reactflow" | "excalidraw">("mermaid");
-  const [mermaidSubMode, setMermaidSubMode] = useState<"flowchart" | "sequence">("flowchart");
+  const [viewMode, setViewMode] = useState<
+    "mermaid" | "reactflow" | "excalidraw"
+  >("mermaid");
+  const [mermaidSubMode, setMermaidSubMode] = useState<
+    "flowchart" | "sequence"
+  >("flowchart");
   const [showCodeEditor, setShowCodeEditor] = useState(false);
   const [editableCode, setEditableCode] = useState("");
   const [copied, setCopied] = useState(false);
@@ -65,9 +69,7 @@ export function DiagramCanvas({
 
   const isLowLevel = mode === "low-level";
   const activeMermaidCode =
-    mermaidSubMode === "sequence"
-      ? (mermaidSequenceCode || "")
-      : mermaidCode;
+    mermaidSubMode === "sequence" ? mermaidSequenceCode || "" : mermaidCode;
 
   useEffect(() => {
     if (!document.getElementById("font-awesome-cdn")) {
@@ -112,7 +114,9 @@ export function DiagramCanvas({
     const svgElement = containerRef.current.querySelector("svg");
     if (!svgElement) return;
 
-    const nodeElements = svgElement.querySelectorAll("g.node, .node, g.actor, .actor");
+    const nodeElements = svgElement.querySelectorAll(
+      "g.node, .node, g.actor, .actor",
+    );
     nodeElements.forEach((nodeEl: Element) => {
       const htmlEl = nodeEl as HTMLElement;
       htmlEl.style.cursor = "pointer";
@@ -194,8 +198,11 @@ export function DiagramCanvas({
       }
 
       const id = `mermaid-svg-${Date.now()}`;
-      const { svg, fallbackInfo: fbInfo, finalCode } =
-        await renderMermaidWithFallback(id, codeToRender);
+      const {
+        svg,
+        fallbackInfo: fbInfo,
+        finalCode,
+      } = await renderMermaidWithFallback(id, codeToRender);
 
       setFallbackInfo(fbInfo);
       if (fbInfo && finalCode !== codeToRender) {
@@ -310,67 +317,72 @@ export function DiagramCanvas({
       className="flex-1 relative flex flex-col bg-slate-50 overflow-hidden h-full w-full"
     >
       {/* CABEÇALHO SUPERIOR FIXO UNIFICADO */}
-      <header className="h-14 bg-white border-b border-slate-200 px-4 shrink-0 flex items-center justify-between z-30 shadow-xs">
+      <header className="min-h-14 py-2 bg-white border-b border-slate-200 px-3 sm:px-4 shrink-0 flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 z-30 shadow-xs">
         {/* Esquerda: Menu Lateral + Seletor de Modo */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           {!isSidebarOpen && (
             <button
               type="button"
               onClick={() => setIsSidebarOpen(true)}
-              className="bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:bg-slate-50 px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-2 text-xs font-semibold cursor-pointer transition-all h-9"
+              className="bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:bg-slate-50 px-2.5 sm:px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 sm:gap-2 text-xs font-semibold cursor-pointer transition-all h-9 shrink-0"
               title="Abrir Menu Lateral"
             >
               <i className="fa-solid fa-bars text-sm"></i>
-              <span>Menu</span>
+              <span className="hidden xs:inline">Menu</span>
             </button>
           )}
 
-          <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1 h-9 items-center">
+          <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1 h-9 items-center ">
             <button
               type="button"
               onClick={() => setViewMode("mermaid")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 shrink-0 ${
                 viewMode === "mermaid"
                   ? "bg-indigo-600 text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
             >
               <i className="fa-solid fa-diagram-project"></i>
-              <span>Diagrama Mermaid</span>
+              <span className="hidden sm:inline">Diagrama </span>
+              <span>Mermaid</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode("reactflow")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 shrink-0 ${
                 viewMode === "reactflow"
                   ? "bg-indigo-600 text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
             >
               <i className="fa-solid fa-vector-square"></i>
-              <span>Editor Interativo (React Flow)</span>
+              <span className="hidden md:inline">Editor Interativo (</span>
+              <span>React Flow</span>
+              <span className="hidden md:inline">)</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode("excalidraw")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 shrink-0 ${
                 viewMode === "excalidraw"
                   ? "bg-indigo-600 text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
             >
               <i className="fa-solid fa-pen-ruler"></i>
-              <span>Desenho Livre (Excalidraw)</span>
+              <span className="hidden md:inline">Desenho Livre (</span>
+              <span>Excalidraw</span>
+              <span className="hidden md:inline">)</span>
             </button>
           </div>
 
           {/* Sub-seletor do tipo de Diagrama Mermaid (Fluxograma TD vs Sequência) */}
           {viewMode === "mermaid" && (isLowLevel || !!mermaidSequenceCode) && (
-            <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1 h-9 items-center ml-1">
+            <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1 h-9 items-center shrink-0">
               <button
                 type="button"
                 onClick={() => setMermaidSubMode("flowchart")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+                className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 h-7 ${
                   mermaidSubMode === "flowchart"
                     ? "bg-white text-indigo-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -378,12 +390,13 @@ export function DiagramCanvas({
                 title="Ver Fluxograma (graph TD)"
               >
                 <i className="fa-solid fa-sitemap"></i>
-                <span>Fluxograma (TD)</span>
+                <span className="hidden sm:inline">Fluxograma (TD)</span>
+                <span className="sm:hidden">TD</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMermaidSubMode("sequence")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+                className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 h-7 ${
                   mermaidSubMode === "sequence"
                     ? "bg-white text-indigo-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -391,31 +404,37 @@ export function DiagramCanvas({
                 title="Ver Diagrama de Sequência (sequenceDiagram)"
               >
                 <i className="fa-solid fa-list-ol"></i>
-                <span>Diagrama de Sequência</span>
+                <span className="hidden sm:inline">Diagrama de </span>
+                <span>Sequência</span>
               </button>
             </div>
           )}
         </div>
 
         {/* Direita: Ações Contextuais */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {viewMode === "excalidraw" && (
             <button
               type="button"
               onClick={() => excalidrawRef.current?.analyzeDrawing()}
               disabled={isLoading}
-              className="h-9 px-3.5 border border-indigo-600 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl cursor-pointer text-xs font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
+              className="h-9 px-2.5 sm:px-3.5 border border-indigo-600 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl cursor-pointer text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
               title="Enviar o desenho livre para ser analisado pela IA Gemini"
             >
               {isLoading ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Analisando Desenho...</span>
+                  <span className="hidden sm:inline">
+                    Analisando Desenho...
+                  </span>
                 </>
               ) : (
                 <>
                   <i className="fa-solid fa-wand-magic-sparkles"></i>
-                  <span>Analisar Desenho com IA</span>
+                  <span className="hidden sm:inline">
+                    Analisar Desenho com IA
+                  </span>
+                  <span className="sm:hidden">Analisar</span>
                 </>
               )}
             </button>
@@ -424,30 +443,32 @@ export function DiagramCanvas({
           {viewMode === "mermaid" && (
             <>
               <button
-                className="w-9 h-9 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
+                className="w-8 h-8 sm:w-9 sm:h-9 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-base sm:text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
                 onClick={handleZoomIn}
                 title="Aumentar Zoom"
               >
                 +
               </button>
               <button
-                className="w-9 h-9 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
+                className="w-8 h-8 sm:w-9 sm:h-9 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-base sm:text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
                 onClick={handleZoomOut}
                 title="Diminuir Zoom"
               >
                 -
               </button>
               <button
-                className="h-9 px-3 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
+                className="h-8 sm:h-9 px-2 sm:px-3 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
                 onClick={handleResetZoom}
+                title="Resetar Visão"
               >
-                Resetar Visão
+                <i className="fa-solid fa-arrows-to-dot sm:mr-1"></i>
+                <span className="hidden md:inline">Resetar Visão</span>
               </button>
             </>
           )}
 
           <button
-            className={`h-9 px-3 border rounded-lg cursor-pointer text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+            className={`h-8 sm:h-9 px-2 sm:px-3 border rounded-lg cursor-pointer text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
               showCodeEditor
                 ? "bg-indigo-600 text-white border-indigo-600"
                 : "border-slate-200 bg-slate-100 text-slate-800 hover:bg-slate-200 hover:text-indigo-600"
@@ -456,26 +477,32 @@ export function DiagramCanvas({
             title="Abrir/Fechar Editor de Código Mermaid"
           >
             <i className="fa-solid fa-code"></i>
-            <span>{showCodeEditor ? "Ocultar Editor" : "Ver Código"}</span>
+            <span className="hidden sm:inline">
+              {showCodeEditor ? "Ocultar Editor" : "Ver Código"}
+            </span>
           </button>
 
           <button
-            className="h-9 px-3 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600 gap-1.5"
+            className="h-8 sm:h-9 px-2 sm:px-3 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600 gap-1.5"
             onClick={toggleFullscreen}
             title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
           >
             <i
               className={`fa-solid ${isFullscreen ? "fa-compress" : "fa-expand"}`}
             ></i>
-            <span>{isFullscreen ? "Sair Fullscreen" : "Tela Cheia"}</span>
+            <span className="hidden lg:inline">
+              {isFullscreen ? "Sair Fullscreen" : "Tela Cheia"}
+            </span>
           </button>
 
           {viewMode === "mermaid" && (
             <button
-              className="h-9 px-3 border border-indigo-100 bg-indigo-50 rounded-lg cursor-pointer text-xs font-semibold text-indigo-600 flex items-center justify-center transition-colors hover:bg-indigo-100"
+              className="h-8 sm:h-9 px-2 sm:px-3 border border-indigo-100 bg-indigo-50 rounded-lg cursor-pointer text-xs font-semibold text-indigo-600 flex items-center justify-center transition-colors hover:bg-indigo-100 gap-1"
               onClick={handleDownload}
+              title="Baixar diagrama em SVG"
             >
-              Baixar SVG
+              <i className="fa-solid fa-download"></i>
+              <span className="hidden sm:inline">Baixar SVG</span>
             </button>
           )}
         </div>
@@ -483,43 +510,48 @@ export function DiagramCanvas({
 
       {/* BANNER INFORMATIVO DE FALLBACK AUTOMÁTICO DO GRÁFICO */}
       {fallbackInfo && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between z-30 text-xs text-amber-900 shadow-xs shrink-0">
+        <div className="bg-amber-50 border-b border-amber-200 px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 z-30 text-xs text-amber-900 shadow-xs shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0">
               <i className="fa-solid fa-triangle-exclamation text-sm"></i>
             </div>
             <div>
-              <div className="font-bold text-amber-950 flex items-center gap-1.5">
-                <span>Fallback Automático de Gráfico Aplicado</span>
+              <div className="font-bold text-amber-950 flex flex-wrap items-center gap-1.5">
+                <span>Fallback Automático Aplicado</span>
                 <span className="px-1.5 py-0.5 rounded bg-amber-200/70 text-amber-900 text-[10px] font-mono">
                   {fallbackInfo.strategyUsed}
                 </span>
               </div>
-              <p className="text-amber-800 text-[11px]">
-                {fallbackInfo.description} (Erro original: <code className="bg-amber-100 px-1 rounded font-mono">{fallbackInfo.originalError.slice(0, 65)}...</code>)
+              <p className="text-amber-800 text-[11px] truncate max-w-[300px] sm:max-w-md">
+                {fallbackInfo.description}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             <button
               type="button"
               onClick={() => setShowCodeEditor(true)}
               className="px-2.5 py-1 bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-lg font-semibold transition-colors text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs"
             >
               <i className="fa-solid fa-code"></i>
-              <span>Ver Código Ajustado</span>
+              <span className="hidden sm:inline">Ver Código Ajustado</span>
+              <span className="sm:hidden">Código</span>
             </button>
             {onRegenerateGraphOnly && (
               <button
                 type="button"
                 onClick={() =>
-                  onRegenerateGraphOnly(activeMermaidCode, fallbackInfo.originalError)
+                  onRegenerateGraphOnly(
+                    activeMermaidCode,
+                    fallbackInfo.originalError,
+                  )
                 }
                 disabled={isLoading}
                 className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition-colors text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
               >
                 <i className="fa-solid fa-wand-magic-sparkles"></i>
-                <span>Regerar Gráfico com IA</span>
+                <span className="hidden sm:inline">Regerar Gráfico com IA</span>
+                <span className="sm:hidden">Regerar</span>
               </button>
             )}
             <button
@@ -601,8 +633,8 @@ export function DiagramCanvas({
 
       {/* Editor de Código Mermaid */}
       {showCodeEditor && (
-        <div className="absolute bottom-0 left-0 right-0 h-[280px] bg-slate-900 border-t border-slate-800 flex flex-col z-30 shadow-2xl transition-all">
-          <div className="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <div className="absolute bottom-0 left-0 right-0 h-[45vh] max-h-[300px] min-h-[180px] bg-slate-900 border-t border-slate-800 flex flex-col z-30 shadow-2xl transition-all">
+          <div className="px-3 sm:px-4 py-2 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
               <i className="fa-solid fa-code text-indigo-400"></i>
               <span>Editor de Código Mermaid</span>

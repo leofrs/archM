@@ -25,11 +25,7 @@ import {
 } from "../utils/mermaidReactFlowConverter";
 import { QuickNodesPalette, type QuickPreset } from "./QuickNodesPalette";
 import type { BlockDefinition } from "../types/architecture";
-import {
-  NodeModal,
-  type InspectorNode,
-  CATEGORY_OPTIONS,
-} from "./NodeModal";
+import { NodeModal, type InspectorNode, CATEGORY_OPTIONS } from "./NodeModal";
 
 interface ReactFlowViewProps {
   mermaidCode: string;
@@ -218,7 +214,8 @@ function ReactFlowContent({
             data?.rawLabel ||
             (typeof data?.label === "string" ? data.label : editingNode.id),
           cssClass: cssClass,
-          category: data?.category || catOpt?.categoryName || "Bloco de Processamento",
+          category:
+            data?.category || catOpt?.categoryName || "Bloco de Processamento",
           icon: data?.icon || catOpt?.icon || "fa-cube",
           colorClass:
             catOpt?.colorClass ||
@@ -226,8 +223,8 @@ function ReactFlowContent({
           headers: Array.isArray(data?.headers)
             ? data.headers
             : typeof data?.headers === "string" && data.headers.trim()
-            ? data.headers.split(",").map((h: string) => h.trim())
-            : ["Content-Type: application/json"],
+              ? data.headers.split(",").map((h: string) => h.trim())
+              : ["Content-Type: application/json"],
           dtoSample:
             typeof data?.dtoSample === "object"
               ? JSON.stringify(data.dtoSample, null, 2)
@@ -320,17 +317,7 @@ function ReactFlowContent({
   return (
     <div ref={reactFlowWrapper} className="relative w-full h-full bg-slate-100">
       {/* BARRA DE AÇÕES DO REACT FLOW */}
-      <div className="absolute top-[68px] left-5 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-xl border border-slate-200 shadow-md">
-        <button
-          type="button"
-          onClick={handleAddCustomNode}
-          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-          title="Adicionar um nó genérico ao diagrama"
-        >
-          <i className="fa-solid fa-plus"></i>
-          <span>Adicionar Bloco</span>
-        </button>
-
+      <div className="absolute top-2 left-5 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-xl border border-slate-200 shadow-md">
         <button
           type="button"
           onClick={handleSave}
