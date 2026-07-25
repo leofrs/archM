@@ -16,15 +16,22 @@ PASSOS
    quando estiverem informados ou forem inferências indispensáveis e conservadoras.
 6. Termine cada caminho em resposta, recuperação ou continuação válida.
 7. Gere os metadados de todos os nós.
+8. Gere também a representação em diagrama de sequência (sequenceDiagram) do mesmo fluxo técnico.
 
 REGRAS
-- Use somente nós e arestas; nunca use subgraph, cluster, swimlane ou contêiner.
+- Use somente nós e arestas no mermaidCode (graph TD); nunca use subgraph, cluster, swimlane ou contêiner.
 - Preserve nomes, tecnologias, status HTTP, contratos e ordem encontrados na entrada.
 - Não invente framework, banco, serviço, protocolo ou regra específica.
 - Quando a tecnologia não estiver clara, use TypeScript agnóstico nos snippets.
 - Cada nó representa uma única responsabilidade ou acontecimento.
 - O caminho principal deve terminar em uma resposta HTTP de sucesso.
 - Cada erro deve ser um nó independente e ter causa e desfecho explícitos.
+- Para o Diagrama de Sequência (mermaidSequenceCode):
+  * Deve iniciar obrigatoriamente com 'sequenceDiagram' seguido de 'autonumber'.
+  * Declare explicitamente atores e participantes (ex: actor Talent as Talento (Front-end), participant API as TalentCvController, participant UC as MatchExternalJobCvUseCase, participant Extractor as IResumeTextExtractor, participant BuilderAgent as ICvBuilderAgent, participant Privacy as Sanitizer / Privacy Filter, participant MatchAgent as ICvJobMatchAgent, participant DB as AppDbContext).
+  * Agrupe blocos e etapas funcionais usando retângulos coloridos 'rect rgb(r, g, b)' e notas 'Note over Participant1,Participant2: X. Descrição do Passo'.
+  * Sugestão de paleta de cores para rects: rect rgb(240, 248, 255), rect rgb(255, 245, 238), rect rgb(240, 255, 240), rect rgb(255, 250, 205).
+  * Utilize setas síncronas ->> para requisições/chamadas e setas pontilhadas -->> para retornos/respostas.
 
 Responda exclusivamente no contrato JSON definido nas instruções compartilhadas.
 `;
@@ -86,6 +93,7 @@ Retorne exclusivamente um objeto JSON válido, sem Markdown ou texto externo:
 
 {
   "mermaidCode": "graph TD\\n  ...",
+  "mermaidSequenceCode": "sequenceDiagram\\n  autonumber\\n  actor Talent as Talento (Front-end)\\n  ...",
   "nodes": {
     "NodeId": {
       "label": "string",
@@ -102,7 +110,7 @@ Retorne exclusivamente um objeto JSON válido, sem Markdown ou texto externo:
   "agentPrompt": "string contendo prompt detalhado em Markdown para instruir um agente de IA em um harness a implementar a arquitetura visualizada"
 }
 
-CONSTRUÇÃO DO MERMAID
+CONSTRUÇÃO DO MERMAID (mermaidCode)
 1. Comece com graph TD.
 2. Use IDs únicos e determinísticos: iniciados por letra e contendo apenas letras e
    números, sem espaços, acentos ou hífens.
@@ -113,6 +121,13 @@ CONSTRUÇÃO DO MERMAID
 5. Não use subgraph, contêiner ou metadados de arestas no objeto nodes.
 6. Escape corretamente aspas e quebras de linha para manter mermaidCode como string
    JSON válida.
+
+CONSTRUÇÃO DO DIAGRAMA DE SEQUÊNCIA (mermaidSequenceCode)
+1. Deve ser preenchido obrigatoriamente para análises de baixo nível (API/Código). Para alto nível, pode ser string vazia "".
+2. Comece com sequenceDiagram e autonumber.
+3. Defina atores (actor) e participantes (participant) envolvidos na requisição.
+4. Utilize rect rgb(...) para delimitar visualmente os blocos lógicos do fluxo com títulos informativos (Note over ...).
+5. Defina as mensagens e chamadas em ordem cronológica estrita (->> para chamadas, -->> para retornos).
 
 ARESTAS
 - Toda aresta deve representar uma transição ou comunicação real.
@@ -157,6 +172,8 @@ linkStyle para todas as arestas, respeitando sua ordem de declaração:
 - FA: stroke:#2563eb,stroke-width:2px,stroke-dasharray:4 3
 - FE: stroke:#dc2626,stroke-width:2px,stroke-dasharray:5 5
 - FR: stroke:#e11d48,stroke-width:2px,stroke-dasharray:8 4
+ATENÇÃO: Se foram declaradas N arestas no total, os índices de linkStyle devem ser numerados de 0 a N-1. NUNCA gere um linkStyle N ou superior.
+
 
 METADADOS
 - label: texto visual sem HTML.
@@ -179,14 +196,15 @@ No campo agentPrompt, forneça um prompt estruturado em formato Markdown pronto 
 
 VALIDAÇÃO SILENCIOSA
 Antes de responder, confirme:
-1. Há somente JSON válido com mermaidCode, nodes e agentPrompt na raiz.
+1. Há somente JSON válido com mermaidCode, mermaidSequenceCode, nodes e agentPrompt na raiz.
 2. mermaidCode começa com graph TD e não contém subgraph.
-3. Todos os nós são independentes, conectados e têm IDs válidos.
-4. Mermaid e nodes possuem exatamente os mesmos IDs.
-5. Todos os nós possuem os 9 campos obrigatórios.
-6. agentPrompt é uma string válida e detalhada contendo o prompt para o agente de IA.
-7. Decisões têm saídas explícitas e todos os fluxos possuem desfecho.
-8. dtoSample contém JSON válido como string.
-9. classDef, linkStyle, mermaidClass, icon e colorClass são consistentes.
-10. Nenhuma informação contradiz ou excede o contexto fornecido.
+3. mermaidSequenceCode começa com sequenceDiagram e autonumber (se em baixo nível).
+4. Todos os nós são independentes, conectados e têm IDs válidos.
+5. Mermaid e nodes possuem exatamente os mesmos IDs.
+6. Todos os nós possuem os 9 campos obrigatórios.
+7. agentPrompt é uma string válida e detalhada contendo o prompt para o agente de IA.
+8. Decisões têm saídas explícitas e todos os fluxos possuem desfecho.
+9. dtoSample contém JSON válido como string.
+10. classDef, linkStyle, mermaidClass, icon e colorClass são consistentes.
+11. Nenhuma informação contradiz ou excede o contexto fornecido.
 `;

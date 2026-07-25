@@ -25,69 +25,45 @@ import {
 } from "../utils/mermaidReactFlowConverter";
 import { QuickNodesPalette, type QuickPreset } from "./QuickNodesPalette";
 import type { BlockDefinition } from "../types/architecture";
+import {
+  NodeModal,
+  type InspectorNode,
+  CATEGORY_OPTIONS,
+} from "./NodeModal";
 
 interface ReactFlowViewProps {
   mermaidCode: string;
+  nodesMetadata?: Record<string, any>;
   onSaveMermaid: (newMermaidCode: string) => void;
 }
 
-const CATEGORY_OPTIONS = [
-  {
-    value: "default",
-    label: "Padrão / Processamento (Cinza)",
-    icon: "fa-cube",
-  },
-  { value: "database", label: "Banco de Dados (Laranja)", icon: "fa-database" },
-  { value: "cache", label: "Cache / Redis (Amarelo)", icon: "fa-bolt" },
-  { value: "queue", label: "Fila / Mensageria (Rosa)", icon: "fa-list-check" },
-  {
-    value: "gateway",
-    label: "Gateway / Rota (Roxo)",
-    icon: "fa-network-wired",
-  },
-  {
-    value: "success",
-    label: "Sucesso / Resposta (Verde)",
-    icon: "fa-circle-check",
-  },
-  {
-    value: "error",
-    label: "Erro / Exceção (Vermelho)",
-    icon: "fa-circle-xmark",
-  },
-];
-
-function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
+function ReactFlowContent({
+  mermaidCode,
+  nodesMetadata,
+  onSaveMermaid,
+}: ReactFlowViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // Estado do Modal de Edição de Nó
+  // Estado do Nó Selecionado para Edição no Modal
   const [editingNode, setEditingNode] = useState<RFNode | null>(null);
-  const [editLabel, setEditLabel] = useState("");
-  const [editClass, setEditClass] = useState("default");
-  const [editExpectedInput, setEditExpectedInput] = useState("");
-  const [editExpectedOutput, setEditExpectedOutput] = useState("");
-  const [editDtoSample, setEditDtoSample] = useState("");
-  const [editHeaders, setEditHeaders] = useState("");
-  const [editPayloadSample, setEditPayloadSample] = useState("");
-  const [modalTab, setModalTab] = useState<"general" | "contract" | "flow">(
-    "general",
-  );
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
   useEffect(() => {
     if (mermaidCode) {
-      const { nodes: parsedNodes, edges: parsedEdges } =
-        mermaidToReactFlow(mermaidCode);
+      const { nodes: parsedNodes, edges: parsedEdges } = mermaidToReactFlow(
+        mermaidCode,
+        nodesMetadata,
+      );
       setNodes(parsedNodes);
       setEdges(parsedEdges);
       setIsDirty(false);
     }
-  }, [mermaidCode, setNodes, setEdges]);
+  }, [mermaidCode, nodesMetadata, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -109,7 +85,6 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
 
   const handleNodesChange = (changes: NodeChange<RFNode>[]) => {
     onNodesChange(changes);
-    // Só consideramos alterado se houver remoção, movimento ou alteração
     const hasMeaningfulChanges = changes.some(
       (c) =>
         c.type === "remove" || c.type === "position" || c.type === "dimensions",
@@ -225,43 +200,50 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
     [screenToFlowPosition, handleAddPresetNode],
   );
 
-  // Ação ao Clicar em um Nó -> Abrir Modal de Edição
+  // Ação ao Clicar em um Nó -> Selecionar Nó para Abrir Modal
   const onNodeClick = useCallback((_: React.MouseEvent, node: RFNode) => {
-    const data = node.data as {
-      rawLabel?: string;
-      label?: string;
-      cssClass?: string;
-      expectedInput?: string;
-      expectedOutput?: string;
-      dtoSample?: string;
-      headers?: string[] | string;
-      payloadSample?: string;
-    };
     setEditingNode(node);
-    setEditLabel(
-      data.rawLabel || (typeof data.label === "string" ? data.label : node.id),
-    );
-    setEditClass(data.cssClass || "default");
-    setEditExpectedInput(data.expectedInput || "");
-    setEditExpectedOutput(data.expectedOutput || "");
-    setEditDtoSample(data.dtoSample || "");
-    setEditHeaders(
-      Array.isArray(data.headers) ? data.headers.join(", ") : data.headers || "",
-    );
-    setEditPayloadSample(data.payloadSample || "");
-    setModalTab("general");
   }, []);
 
-  const handleSaveNodeEdit = () => {
+  // Construção do objeto InspectorNode para passar ao NodeModal
+  const selectedInspectorNode: InspectorNode | null = editingNode
+    ? (() => {
+        const data = editingNode.data as any;
+        const cssClass = data?.cssClass || "default";
+        const catOpt = CATEGORY_OPTIONS.find((c) => c.value === cssClass);
+
+        return {
+          id: editingNode.id,
+          label:
+            data?.rawLabel ||
+            (typeof data?.label === "string" ? data.label : editingNode.id),
+          cssClass: cssClass,
+          category: data?.category || catOpt?.categoryName || "Bloco de Processamento",
+          icon: data?.icon || catOpt?.icon || "fa-cube",
+          colorClass:
+            catOpt?.colorClass ||
+            "bg-slate-100 text-slate-800 border-slate-200",
+          headers: Array.isArray(data?.headers)
+            ? data.headers
+            : typeof data?.headers === "string" && data.headers.trim()
+            ? data.headers.split(",").map((h: string) => h.trim())
+            : ["Content-Type: application/json"],
+          dtoSample:
+            typeof data?.dtoSample === "object"
+              ? JSON.stringify(data.dtoSample, null, 2)
+              : data?.dtoSample || "{}",
+          codeSnippet:
+            data?.codeSnippet || `// Implementação: ${editingNode.id}`,
+          expectedInput: data?.expectedInput,
+          expectedOutput: data?.expectedOutput,
+        };
+      })()
+    : null;
+
+  const handleSaveNodeModal = (updatedNode: InspectorNode) => {
     if (!editingNode) return;
 
-    const selectedOption = CATEGORY_OPTIONS.find((c) => c.value === editClass);
-    const icon = selectedOption ? selectedOption.icon : "fa-cube";
-    const htmlLabel = `<i class='fa-solid ${icon} mr-1.5'></i> ${editLabel}`;
-
-    const parsedHeaders = editHeaders
-      ? editHeaders.split(",").map((h) => h.trim()).filter(Boolean)
-      : [];
+    const htmlLabel = `<i class='fa-solid ${updatedNode.icon} mr-1.5'></i> ${updatedNode.label}`;
 
     setNodes((nds) =>
       nds.map((n) => {
@@ -270,16 +252,18 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
             ...n,
             data: {
               ...n.data,
-              rawLabel: editLabel,
+              rawLabel: updatedNode.label,
               label: htmlLabel,
-              cssClass: editClass,
-              expectedInput: editExpectedInput,
-              expectedOutput: editExpectedOutput,
-              dtoSample: editDtoSample,
-              headers: parsedHeaders,
-              payloadSample: editPayloadSample,
+              cssClass: updatedNode.cssClass || "default",
+              category: updatedNode.category,
+              icon: updatedNode.icon,
+              expectedInput: updatedNode.expectedInput,
+              expectedOutput: updatedNode.expectedOutput,
+              dtoSample: updatedNode.dtoSample,
+              headers: updatedNode.headers,
+              codeSnippet: updatedNode.codeSnippet,
             },
-            style: getNodeStyleByClass(editClass),
+            style: getNodeStyleByClass(updatedNode.cssClass),
           };
         }
         return n;
@@ -403,189 +387,15 @@ function ReactFlowContent({ mermaidCode, onSaveMermaid }: ReactFlowViewProps) {
         <Background color="#cbd5e1" gap={20} size={1} />
       </ReactFlow>
 
-      {/* MODAL DE EDIÇÃO DE BLOCO */}
-      {editingNode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs animate-in fade-in p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-[480px] p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
-                <i className="fa-solid fa-pen-to-square text-indigo-600"></i>
-                <span>Editar Bloco & Contrato Técnico</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingNode(null)}
-                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* Abas do Modal */}
-            <div className="flex border-b border-slate-200 bg-slate-50 rounded-lg p-1 text-xs font-semibold text-slate-600">
-              <button
-                type="button"
-                onClick={() => setModalTab("general")}
-                className={`flex-1 py-1.5 rounded-md text-center cursor-pointer transition-all ${
-                  modalTab === "general"
-                    ? "bg-white text-indigo-600 font-bold shadow-xs"
-                    : "hover:text-slate-900"
-                }`}
-              >
-                🏷️ Identificação
-              </button>
-              <button
-                type="button"
-                onClick={() => setModalTab("contract")}
-                className={`flex-1 py-1.5 rounded-md text-center cursor-pointer transition-all ${
-                  modalTab === "contract"
-                    ? "bg-white text-indigo-600 font-bold shadow-xs"
-                    : "hover:text-slate-900"
-                }`}
-              >
-                📋 DTO & Headers
-              </button>
-              <button
-                type="button"
-                onClick={() => setModalTab("flow")}
-                className={`flex-1 py-1.5 rounded-md text-center cursor-pointer transition-all ${
-                  modalTab === "flow"
-                    ? "bg-white text-indigo-600 font-bold shadow-xs"
-                    : "hover:text-slate-900"
-                }`}
-              >
-                📥 Entrada & Saída
-              </button>
-            </div>
-
-            {/* Aba 1: Geral */}
-            {modalTab === "general" && (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Rótulo / Nome do Bloco:
-                  </label>
-                  <input
-                    type="text"
-                    value={editLabel}
-                    onChange={(e) => setEditLabel(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                    placeholder="Ex: OrderController: handleCheckout"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Categoria / Estilo Visual:
-                  </label>
-                  <select
-                    value={editClass}
-                    onChange={(e) => setEditClass(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 bg-white cursor-pointer"
-                  >
-                    {CATEGORY_OPTIONS.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {/* Aba 2: Contrato DTO / Headers / Payload */}
-            {modalTab === "contract" && (
-              <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Headers HTTP (separados por vírgula):
-                  </label>
-                  <input
-                    type="text"
-                    value={editHeaders}
-                    onChange={(e) => setEditHeaders(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:outline-none focus:border-indigo-600"
-                    placeholder="Content-Type: application/json, Authorization: Bearer token"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    DTO / Schema Exemplo (JSON):
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={editDtoSample}
-                    onChange={(e) => setEditDtoSample(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono bg-slate-900 text-slate-100 outline-none focus:border-indigo-600 leading-relaxed resize-none"
-                    placeholder={`{\n  "clienteId": "cli_100",\n  "total": 150.00\n}`}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Aba 3: Fluxo de Entrada e Saída Esperada */}
-            {modalTab === "flow" && (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    📥 Dado / Entrada Esperada:
-                  </label>
-                  <input
-                    type="text"
-                    value={editExpectedInput}
-                    onChange={(e) => setEditExpectedInput(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600"
-                    placeholder="Ex: Request DTO, Headers, Route Params"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    📤 Resposta / Saída Esperada (Sucesso ou Erro):
-                  </label>
-                  <input
-                    type="text"
-                    value={editExpectedOutput}
-                    onChange={(e) => setEditExpectedOutput(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-600"
-                    placeholder="Ex: Response DTO / HTTP 200 OK / HTTP 422 Error"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-2">
-              <button
-                type="button"
-                onClick={handleDeleteNode}
-                className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <i className="fa-solid fa-trash-can"></i>
-                <span>Excluir Bloco</span>
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingNode(null)}
-                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
-                >
-                  Cancelar
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSaveNodeEdit}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow-sm transition-all"
-                >
-                  Salvar Alterações
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL DE EDIÇÃO DE BLOCO E METADADOS */}
+      <NodeModal
+        node={selectedInspectorNode}
+        isOpen={!!editingNode}
+        onClose={() => setEditingNode(null)}
+        isEditable={true}
+        onSave={handleSaveNodeModal}
+        onDelete={handleDeleteNode}
+      />
     </div>
   );
 }

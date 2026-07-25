@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { DiagramCanvas } from "./components/DiagramCanvas";
 import { ErrorModal } from "./components/ErrorModal";
+import { LoadingModal } from "./components/LoadingModal";
 import {
   COMPLETE_HIGH_LEVEL_PROMPT,
   COMPLETE_LOW_LEVEL_PROMPT,
@@ -20,6 +21,7 @@ export default function App() {
 
   // Guardamos o código Mermaid E os metadados dos nós gerados pela IA, além do prompt do agente
   const [mermaidCode, setMermaidCode] = useState("");
+  const [mermaidSequenceCode, setMermaidSequenceCode] = useState("");
   const [nodesMetadata, setNodesMetadata] = useState<Record<string, any>>({});
   const [agentPrompt, setAgentPrompt] = useState("");
 
@@ -107,6 +109,7 @@ export default function App() {
 
       setStatusMsg("Renderizando diagrama e atrelando metadados aos nós...");
       setMermaidCode(parsedData.mermaidCode);
+      setMermaidSequenceCode(parsedData.mermaidSequenceCode || "");
       setNodesMetadata(parsedData.nodes || {});
       setAgentPrompt(parsedData.agentPrompt || "");
     } catch (error: any) {
@@ -185,10 +188,74 @@ export default function App() {
 
       setStatusMsg("Desenho analisado com sucesso! Renderizando diagrama e metadados...");
       setMermaidCode(parsedData.mermaidCode);
+      setMermaidSequenceCode(parsedData.mermaidSequenceCode || "");
       setNodesMetadata(parsedData.nodes || {});
       setAgentPrompt(parsedData.agentPrompt || "");
     } catch (error: any) {
       showErrorModal(error.message || String(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerateGraphOnly = async (
+    brokenCode: string,
+    errorMsg: string,
+  ) => {
+    if (!apiKey.trim()) {
+      showErrorModal("Por favor, insira a chave da API do Google Gemini no menu lateral.");
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusMsg("Regerando exclusivamente o gráfico Mermaid com a IA...");
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: `O código Mermaid a seguir apresentou um erro ao ser montado na biblioteca Mermaid:\n\nERRO: ${errorMsg}\n\nCÓDIGO COM ERRO:\n${brokenCode}\n\nInstrução: Corrija a sintaxe do código Mermaid. Garanta estritamente que se houver N arestas, os índices das diretivas linkStyle devem ir APENAS de 0 a N-1.\n\nRetorne EXCLUSIVAMENTE um objeto JSON no formato:\n{\n  "mermaidCode": "graph TD\\n  ..."\n}`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: "application/json",
+            },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || "Erro na chamada da API");
+      }
+
+      const data = await response.json();
+      const rawJsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!rawJsonText) {
+        throw new Error("O modelo não retornou resposta.");
+      }
+
+      const parsedData = JSON.parse(rawJsonText);
+      if (!parsedData.mermaidCode) {
+        throw new Error("A resposta não contém o campo mermaidCode.");
+      }
+
+      setMermaidCode(parsedData.mermaidCode);
+      setStatusMsg("Gráfico regerado com sucesso pela IA!");
+    } catch (error: any) {
+      showErrorModal("Erro ao regerar gráfico: " + (error.message || String(error)));
     } finally {
       setIsLoading(false);
     }
@@ -201,6 +268,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
+      <LoadingModal isOpen={isLoading} statusMsg={statusMsg} />
+
       <ErrorModal
         isOpen={!!errorMessage}
         errorText={errorMessage}
@@ -225,6 +294,8 @@ export default function App() {
 
       <DiagramCanvas
         mermaidCode={mermaidCode}
+        mermaidSequenceCode={mermaidSequenceCode}
+        mode={mode}
         nodesMetadata={nodesMetadata}
         agentPrompt={agentPrompt}
         onError={showErrorModal}
@@ -234,7 +305,9 @@ export default function App() {
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         onMermaidCodeChange={setMermaidCode}
+        onMermaidSequenceCodeChange={setMermaidSequenceCode}
         onAnalyzeDrawing={handleGenerateFromImage}
+        onRegenerateGraphOnly={handleRegenerateGraphOnly}
         isLoading={isLoading}
       />
     </div>

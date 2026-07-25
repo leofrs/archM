@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import svgPanZoom from "svg-pan-zoom";
-import { NodeInspectorDrawer, type InspectorNode } from "./NodeInspectorDrawer";
+import { NodeModal, type InspectorNode } from "./NodeModal";
 import { ReactFlowView } from "./ReactFlowView";
 import { AgentPromptViewer } from "./AgentPromptViewer";
 import { ExcalidrawView, type ExcalidrawViewRef } from "./ExcalidrawView";
+import {
+  renderMermaidWithFallback,
+  type FallbackInfo,
+} from "../utils/mermaidFallback";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -14,6 +18,8 @@ mermaid.initialize({
 
 interface DiagramCanvasProps {
   mermaidCode: string;
+  mermaidSequenceCode?: string;
+  mode?: "low-level" | "high-level";
   nodesMetadata?: Record<string, any>;
   agentPrompt?: string;
   onError: (msg: string) => void;
@@ -21,12 +27,16 @@ interface DiagramCanvasProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
   onMermaidCodeChange?: (newCode: string) => void;
+  onMermaidSequenceCodeChange?: (newCode: string) => void;
   onAnalyzeDrawing?: (base64Image: string) => void;
+  onRegenerateGraphOnly?: (brokenCode: string, errorMsg: string) => void;
   isLoading?: boolean;
 }
 
 export function DiagramCanvas({
   mermaidCode,
+  mermaidSequenceCode,
+  mode,
   nodesMetadata,
   agentPrompt,
   onError,
@@ -34,7 +44,9 @@ export function DiagramCanvas({
   isSidebarOpen,
   setIsSidebarOpen,
   onMermaidCodeChange,
+  onMermaidSequenceCodeChange,
   onAnalyzeDrawing,
+  onRegenerateGraphOnly,
   isLoading,
 }: DiagramCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,11 +55,19 @@ export function DiagramCanvas({
   const excalidrawRef = useRef<ExcalidrawViewRef>(null);
 
   const [viewMode, setViewMode] = useState<"mermaid" | "reactflow" | "excalidraw">("mermaid");
+  const [mermaidSubMode, setMermaidSubMode] = useState<"flowchart" | "sequence">("flowchart");
   const [showCodeEditor, setShowCodeEditor] = useState(false);
   const [editableCode, setEditableCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<InspectorNode | null>(null);
+  const [fallbackInfo, setFallbackInfo] = useState<FallbackInfo | null>(null);
+
+  const isLowLevel = mode === "low-level";
+  const activeMermaidCode =
+    mermaidSubMode === "sequence"
+      ? (mermaidSequenceCode || "")
+      : mermaidCode;
 
   useEffect(() => {
     if (!document.getElementById("font-awesome-cdn")) {
@@ -61,8 +81,8 @@ export function DiagramCanvas({
   }, []);
 
   useEffect(() => {
-    setEditableCode(mermaidCode);
-  }, [mermaidCode]);
+    setEditableCode(activeMermaidCode);
+  }, [activeMermaidCode]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -92,7 +112,7 @@ export function DiagramCanvas({
     const svgElement = containerRef.current.querySelector("svg");
     if (!svgElement) return;
 
-    const nodeElements = svgElement.querySelectorAll("g.node, .node");
+    const nodeElements = svgElement.querySelectorAll("g.node, .node, g.actor, .actor");
     nodeElements.forEach((nodeEl: Element) => {
       const htmlEl = nodeEl as HTMLElement;
       htmlEl.style.cursor = "pointer";
@@ -174,7 +194,13 @@ export function DiagramCanvas({
       }
 
       const id = `mermaid-svg-${Date.now()}`;
-      const { svg } = await mermaid.render(id, codeToRender);
+      const { svg, fallbackInfo: fbInfo, finalCode } =
+        await renderMermaidWithFallback(id, codeToRender);
+
+      setFallbackInfo(fbInfo);
+      if (fbInfo && finalCode !== codeToRender) {
+        setEditableCode(finalCode);
+      }
 
       if (containerRef.current) {
         containerRef.current.innerHTML = svg;
@@ -201,6 +227,7 @@ export function DiagramCanvas({
 
       onRenderSuccess();
     } catch (e: any) {
+      setFallbackInfo(null);
       onError(
         `Erro de sintaxe no Mermaid: ${e.message}\n\nCódigo Atual:\n${codeToRender}`,
       );
@@ -208,11 +235,11 @@ export function DiagramCanvas({
   };
 
   useEffect(() => {
-    if (mermaidCode && viewMode === "mermaid") {
-      renderDiagram(mermaidCode);
+    if (activeMermaidCode && viewMode === "mermaid") {
+      renderDiagram(activeMermaidCode);
       setSelectedNode(null);
     }
-  }, [mermaidCode, viewMode]);
+  }, [activeMermaidCode, viewMode]);
 
   const handleSaveFromReactFlow = (newMermaidCode: string) => {
     setEditableCode(newMermaidCode);
@@ -223,8 +250,14 @@ export function DiagramCanvas({
   };
 
   const handleApplyManualEdit = () => {
-    if (onMermaidCodeChange) {
-      onMermaidCodeChange(editableCode);
+    if (mermaidSubMode === "sequence") {
+      if (onMermaidSequenceCodeChange) {
+        onMermaidSequenceCodeChange(editableCode);
+      }
+    } else {
+      if (onMermaidCodeChange) {
+        onMermaidCodeChange(editableCode);
+      }
     }
     renderDiagram(editableCode);
   };
@@ -330,6 +363,38 @@ export function DiagramCanvas({
               <span>Desenho Livre (Excalidraw)</span>
             </button>
           </div>
+
+          {/* Sub-seletor do tipo de Diagrama Mermaid (Fluxograma TD vs Sequência) */}
+          {viewMode === "mermaid" && (isLowLevel || !!mermaidSequenceCode) && (
+            <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1 h-9 items-center ml-1">
+              <button
+                type="button"
+                onClick={() => setMermaidSubMode("flowchart")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+                  mermaidSubMode === "flowchart"
+                    ? "bg-white text-indigo-600 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+                title="Ver Fluxograma (graph TD)"
+              >
+                <i className="fa-solid fa-sitemap"></i>
+                <span>Fluxograma (TD)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMermaidSubMode("sequence")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+                  mermaidSubMode === "sequence"
+                    ? "bg-white text-indigo-600 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+                title="Ver Diagrama de Sequência (sequenceDiagram)"
+              >
+                <i className="fa-solid fa-list-ol"></i>
+                <span>Diagrama de Sequência</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Direita: Ações Contextuais */}
@@ -416,6 +481,59 @@ export function DiagramCanvas({
         </div>
       </header>
 
+      {/* BANNER INFORMATIVO DE FALLBACK AUTOMÁTICO DO GRÁFICO */}
+      {fallbackInfo && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between z-30 text-xs text-amber-900 shadow-xs shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0">
+              <i className="fa-solid fa-triangle-exclamation text-sm"></i>
+            </div>
+            <div>
+              <div className="font-bold text-amber-950 flex items-center gap-1.5">
+                <span>Fallback Automático de Gráfico Aplicado</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-200/70 text-amber-900 text-[10px] font-mono">
+                  {fallbackInfo.strategyUsed}
+                </span>
+              </div>
+              <p className="text-amber-800 text-[11px]">
+                {fallbackInfo.description} (Erro original: <code className="bg-amber-100 px-1 rounded font-mono">{fallbackInfo.originalError.slice(0, 65)}...</code>)
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowCodeEditor(true)}
+              className="px-2.5 py-1 bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-lg font-semibold transition-colors text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            >
+              <i className="fa-solid fa-code"></i>
+              <span>Ver Código Ajustado</span>
+            </button>
+            {onRegenerateGraphOnly && (
+              <button
+                type="button"
+                onClick={() =>
+                  onRegenerateGraphOnly(activeMermaidCode, fallbackInfo.originalError)
+                }
+                disabled={isLoading}
+                className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition-colors text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+              >
+                <i className="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Regerar Gráfico com IA</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setFallbackInfo(null)}
+              className="w-7 h-7 flex items-center justify-center text-amber-700 hover:text-amber-950 font-bold hover:bg-amber-200/50 rounded-lg text-sm cursor-pointer ml-1"
+              title="Fechar Aviso"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ÁREA DO CANVAS (CONTAINER FLEX-1) */}
       <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col">
         {/* PROMPT DO AGENTE (HARNESS) - PAINEL SOBREPOSTO EXPANSÍVEL */}
@@ -439,7 +557,7 @@ export function DiagramCanvas({
               backgroundSize: "40px 40px",
             }}
           >
-            {!mermaidCode && (
+            {!activeMermaidCode && (
               <div className="text-slate-500 text-sm text-center">
                 <div className="text-3xl mb-2.5">⌘</div>O diagrama gerado
                 aparecerá aqui.
@@ -452,6 +570,7 @@ export function DiagramCanvas({
         {viewMode === "reactflow" && (
           <ReactFlowView
             mermaidCode={editableCode}
+            nodesMetadata={nodesMetadata}
             onSaveMermaid={handleSaveFromReactFlow}
           />
         )}
@@ -469,11 +588,13 @@ export function DiagramCanvas({
           />
         )}
 
-        {/* Gaveta de Inspeção do Nó */}
+        {/* Modal de Inspeção do Nó no Diagrama Mermaid */}
         {viewMode === "mermaid" && (
-          <NodeInspectorDrawer
+          <NodeModal
             node={selectedNode}
+            isOpen={!!selectedNode}
             onClose={() => setSelectedNode(null)}
+            isEditable={false}
           />
         )}
       </div>

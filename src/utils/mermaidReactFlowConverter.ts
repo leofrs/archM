@@ -84,7 +84,10 @@ export function getNodeStyleByClass(cssClass?: string) {
   }
 }
 
-export function mermaidToReactFlow(mermaidCode: string): { nodes: RFNode[]; edges: RFEdge[] } {
+export function mermaidToReactFlow(
+  mermaidCode: string,
+  nodesMetadata?: Record<string, any>
+): { nodes: RFNode[]; edges: RFEdge[] } {
   if (!mermaidCode) return { nodes: [], edges: [] };
 
   const nodesMap = new Map<string, ParsedMermaidNode>();
@@ -179,12 +182,39 @@ export function mermaidToReactFlow(mermaidCode: string): { nodes: RFNode[]; edge
       const x = startX + indexInLevel * 240;
       const y = levelIdx * 140 + 40;
 
+      let matchedData: any = null;
+      if (nodesMetadata) {
+        for (const [key, data] of Object.entries(nodesMetadata)) {
+          if (
+            id === key ||
+            id.toLowerCase().includes(key.toLowerCase()) ||
+            key.toLowerCase().includes(id.toLowerCase()) ||
+            nodeData.label
+              .toLowerCase()
+              .includes(data.label?.toLowerCase() || key.toLowerCase())
+          ) {
+            matchedData = data;
+            break;
+          }
+        }
+      }
+
       rfNodes.push({
         id,
         data: {
           label: nodeData.label,
           rawLabel: nodeData.label,
           cssClass: nodeData.cssClass,
+          category: matchedData?.category,
+          icon: matchedData?.icon,
+          headers: matchedData?.headers,
+          dtoSample:
+            typeof matchedData?.dtoSample === "object"
+              ? JSON.stringify(matchedData.dtoSample, null, 2)
+              : matchedData?.dtoSample,
+          codeSnippet: matchedData?.codeSnippet,
+          expectedInput: matchedData?.expectedInput,
+          expectedOutput: matchedData?.expectedOutput,
         },
         position: { x, y },
         style: getNodeStyleByClass(nodeData.cssClass),
