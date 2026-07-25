@@ -7,7 +7,9 @@ import { DashboardView } from "./components/DashboardView";
 import { CreateProjectModal } from "./components/CreateProjectModal";
 import { DeleteWorkspaceModal } from "./components/DeleteWorkspaceModal";
 import { DeleteSubProjectModal } from "./components/DeleteSubProjectModal";
+import { LLMConfigModal } from "./components/LLMConfigModal";
 import type { Workspace, SubProject } from "./types/project";
+import type { LLMConfig } from "./types/llm";
 import {
   getStoredWorkspaces,
   updateWorkspaceInStorage,
@@ -18,6 +20,17 @@ import {
   duplicateSubProjectInWorkspace,
   deleteSubProjectFromWorkspace,
 } from "./utils/projectStorage";
+import {
+  getStoredLLMConfig,
+  saveLLMConfig,
+  getActiveLLMKey,
+  LLM_PROVIDERS,
+} from "./utils/llmStorage";
+import {
+  generateArchitectureDiagram,
+  generateFromImageSketch,
+  regenerateGraphSyntax,
+} from "./services/llmService";
 import {
   COMPLETE_HIGH_LEVEL_PROMPT,
   COMPLETE_LOW_LEVEL_PROMPT,
@@ -39,14 +52,14 @@ export default function App() {
   const [workspaceToDelete, setWorkspaceToDelete] = useState<Workspace | null>(null);
   const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
 
-  // Config da API Gemini (mantida no localStorage)
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("archm_gemini_key") || "");
+  // Config de Provedor LLM (Multi-Provedor: Google, Anthropic, OpenAI)
+  const [llmConfig, setLlmConfig] = useState<LLMConfig>(() => getStoredLLMConfig());
+  const [isLLMModalOpen, setIsLLMModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (apiKey) {
-      localStorage.setItem("archm_gemini_key", apiKey);
-    }
-  }, [apiKey]);
+  const handleSaveLLMConfig = (newConfig: LLMConfig) => {
+    setLlmConfig(newConfig);
+    saveLLMConfig(newConfig);
+  };
 
   // Estados Locais do Sub-projeto Ativo no Workspace
   const [lowLevelPrompt, setLowLevelPrompt] = useState("");
@@ -98,89 +111,73 @@ export default function App() {
     setMermaidSequenceCode(sub.mermaidSequenceCode || "");
     setNodesMetadata(sub.nodesMetadata || {});
     setAgentPrompt(sub.agentPrompt || "");
-    setLowLevelPrompt(sub.lowLevelPrompt || (sub.mode === "low-level" ? sub.agentPrompt || "" : ""));
-    setHighLevelPrompt(sub.highLevelPrompt || (sub.mode === "high-level" ? sub.agentPrompt || "" : ""));
-    setIncludeEdgeCases(sub.includeEdgeCases || false);
+    setLowLevelPrompt(sub.lowLevelPrompt || sub.agentPrompt || "");
+    setHighLevelPrompt(sub.highLevelPrompt || sub.agentPrompt || "");
   };
 
-  // Alternar entre Sub-projetos/Rotas dentro do Workspace
+  // Seleção e alteração de Sub-projeto
   const handleSelectSubProject = (subProjectId: string) => {
     if (!activeWorkspace) return;
+    saveCurrentSubProjectState();
+
     const targetSub = activeWorkspace.subProjects.find((s) => s.id === subProjectId);
-    if (!targetSub) return;
-
-    setActiveSubProjectId(subProjectId);
-    loadSubProjectState(targetSub);
-
-    // Atualiza activeSubProjectId no Workspace
-    const updatedWs: Workspace = {
-      ...activeWorkspace,
-      activeSubProjectId: subProjectId,
-    };
-    setActiveWorkspace(updatedWs);
-    const newList = updateWorkspaceInStorage(updatedWs);
-    setWorkspaces(newList);
+    if (targetSub) {
+      loadSubProjectState(targetSub);
+      setActiveSubProjectId(subProjectId);
+      const updatedWs = { ...activeWorkspace, activeSubProjectId: subProjectId };
+      setActiveWorkspace(updatedWs);
+      updateWorkspaceInStorage(updatedWs);
+      setWorkspaces(getStoredWorkspaces());
+    }
   };
 
-  // Sincronizar alterações do sub-projeto ativo com o storage do Workspace
-  useEffect(() => {
-    if (!activeWorkspace || !activeSubProjectId || view !== "workspace") return;
+  // Salvar estado atual do sub-projeto
+  const saveCurrentSubProjectState = () => {
+    if (!activeWorkspace || !activeSubProjectId) return;
+    const updatedSubProjects = activeWorkspace.subProjects.map((sub) => {
+      if (sub.id === activeSubProjectId) {
+        return {
+          ...sub,
+          mode,
+          mermaidCode,
+          mermaidSequenceCode,
+          nodesMetadata,
+          agentPrompt,
+          lowLevelPrompt,
+          highLevelPrompt,
+        };
+      }
+      return sub;
+    });
 
-    const subIdx = activeWorkspace.subProjects.findIndex((s) => s.id === activeSubProjectId);
-    if (subIdx === -1) return;
-
-    const currentSub = activeWorkspace.subProjects[subIdx];
-    const updatedSub: SubProject = {
-      ...currentSub,
-      mode,
-      mermaidCode,
-      mermaidSequenceCode,
-      nodesMetadata,
-      agentPrompt,
-      lowLevelPrompt,
-      highLevelPrompt,
-      includeEdgeCases,
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Só atualiza se houve mudança real nos campos
-    if (
-      currentSub.mode === updatedSub.mode &&
-      currentSub.mermaidCode === updatedSub.mermaidCode &&
-      currentSub.mermaidSequenceCode === updatedSub.mermaidSequenceCode &&
-      currentSub.agentPrompt === updatedSub.agentPrompt &&
-      currentSub.lowLevelPrompt === updatedSub.lowLevelPrompt &&
-      currentSub.highLevelPrompt === updatedSub.highLevelPrompt &&
-      currentSub.includeEdgeCases === updatedSub.includeEdgeCases &&
-      JSON.stringify(currentSub.nodesMetadata) === JSON.stringify(updatedSub.nodesMetadata)
-    ) {
-      return;
-    }
-
-    const newSubProjects = [...activeWorkspace.subProjects];
-    newSubProjects[subIdx] = updatedSub;
-
-    const updatedWs: Workspace = {
-      ...activeWorkspace,
-      subProjects: newSubProjects,
-      updatedAt: new Date().toISOString(),
-    };
-
+    const updatedWs = { ...activeWorkspace, subProjects: updatedSubProjects };
     setActiveWorkspace(updatedWs);
-    const newList = updateWorkspaceInStorage(updatedWs);
-    setWorkspaces(newList);
-  }, [
-    mermaidCode,
-    mermaidSequenceCode,
-    nodesMetadata,
-    agentPrompt,
-    lowLevelPrompt,
-    highLevelPrompt,
-    mode,
-    includeEdgeCases,
-  ]);
+    updateWorkspaceInStorage(updatedWs);
+    setWorkspaces(getStoredWorkspaces());
+  };
 
-  // Criar ou Editar Workspace
+  // Atualiza autosave local quando os dados alteram
+  useEffect(() => {
+    if (!activeWorkspace || !activeSubProjectId) return;
+    const currentSub = activeWorkspace.subProjects.find((s) => s.id === activeSubProjectId);
+    if (!currentSub) return;
+
+    if (
+      currentSub.mermaidCode !== mermaidCode ||
+      currentSub.mermaidSequenceCode !== mermaidSequenceCode ||
+      currentSub.mode !== mode ||
+      currentSub.lowLevelPrompt !== lowLevelPrompt ||
+      currentSub.highLevelPrompt !== highLevelPrompt ||
+      JSON.stringify(currentSub.nodesMetadata) !== JSON.stringify(nodesMetadata)
+    ) {
+      const timer = setTimeout(() => {
+        saveCurrentSubProjectState();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [mermaidCode, mermaidSequenceCode, currentPrompt, mode, nodesMetadata, lowLevelPrompt, highLevelPrompt]);
+
+  // Criar / Editar Workspace via Modal
   const handleSaveWorkspaceForm = (data: {
     name: string;
     description: string;
@@ -188,20 +185,16 @@ export default function App() {
     initialSubProjectName?: string;
   }) => {
     if (workspaceToEdit) {
-      // Edição de Workspace Existente
-      const updated: Workspace = {
+      const updated = {
         ...workspaceToEdit,
         name: data.name,
         description: data.description,
       };
-      const newList = updateWorkspaceInStorage(updated);
-      setWorkspaces(newList);
-      if (activeWorkspace?.id === workspaceToEdit.id) {
+      updateWorkspaceInStorage(updated);
+      if (activeWorkspace?.id === updated.id) {
         setActiveWorkspace(updated);
       }
-      setWorkspaceToEdit(null);
     } else {
-      // Criação de Novo Workspace
       const newWs = createNewWorkspace(
         data.name,
         data.description,
@@ -209,30 +202,40 @@ export default function App() {
         undefined,
         data.initialSubProjectName
       );
+      setActiveWorkspace(newWs);
+      if (newWs.subProjects.length > 0) {
+        setActiveSubProjectId(newWs.subProjects[0].id);
+        loadSubProjectState(newWs.subProjects[0]);
+      }
+      setView("workspace");
+    }
+    setWorkspaces(getStoredWorkspaces());
+    setIsCreateModalOpen(false);
+    setWorkspaceToEdit(null);
+  };
+
+  const handleDuplicateWorkspace = (workspaceId: string) => {
+    const dup = duplicateWorkspaceInStorage(workspaceId);
+    if (dup) {
       setWorkspaces(getStoredWorkspaces());
-      handleSelectWorkspace(newWs);
     }
   };
 
-  // Duplicar Workspace
-  const handleDuplicateWorkspace = (workspaceId: string) => {
-    const { updatedList } = duplicateWorkspaceInStorage(workspaceId);
-    setWorkspaces(updatedList);
-  };
-
-  // Excluir Workspace
   const handleDeleteWorkspace = (workspaceId: string) => {
-    const updated = deleteWorkspaceFromStorage(workspaceId);
-    setWorkspaces(updated);
+    deleteWorkspaceFromStorage(workspaceId);
+    setWorkspaces(getStoredWorkspaces());
     if (activeWorkspace?.id === workspaceId) {
       setActiveWorkspace(null);
       setView("dashboard");
     }
+    setWorkspaceToDelete(null);
   };
 
-  // Gerenciamento de Sub-projetos/Rotas dentro do Workspace
+  // Gerenciamento de Sub-projetos
   const handleAddSubProject = (name: string, subMode: "low-level" | "high-level") => {
     if (!activeWorkspace) return;
+    saveCurrentSubProjectState();
+
     const updated = addSubProjectToWorkspace(activeWorkspace.id, name, subMode);
     if (updated) {
       setActiveWorkspace(updated);
@@ -245,20 +248,19 @@ export default function App() {
 
   const handleRenameSubProject = (subId: string, newName: string) => {
     if (!activeWorkspace) return;
-    const newSubProjects = activeWorkspace.subProjects.map((s) =>
-      s.id === subId ? { ...s, name: newName, updatedAt: new Date().toISOString() } : s
+    const updatedSubProjects = activeWorkspace.subProjects.map((s) =>
+      s.id === subId ? { ...s, name: newName } : s
     );
-    const updatedWs: Workspace = {
-      ...activeWorkspace,
-      subProjects: newSubProjects,
-    };
+    const updatedWs = { ...activeWorkspace, subProjects: updatedSubProjects };
     setActiveWorkspace(updatedWs);
-    const newList = updateWorkspaceInStorage(updatedWs);
-    setWorkspaces(newList);
+    updateWorkspaceInStorage(updatedWs);
+    setWorkspaces(getStoredWorkspaces());
   };
 
   const handleDuplicateSubProject = (subId: string) => {
     if (!activeWorkspace) return;
+    saveCurrentSubProjectState();
+
     const updated = duplicateSubProjectInWorkspace(activeWorkspace.id, subId);
     if (updated) {
       setActiveWorkspace(updated);
@@ -290,10 +292,14 @@ export default function App() {
     setSubProjectToDelete(null);
   };
 
-  // Gerar Diagrama e Metadados via IA Gemini
+  // Gerar Diagrama e Metadados via Provedor de IA Selecionado
   const handleGenerate = async () => {
-    if (!apiKey.trim()) {
-      showErrorModal("Por favor, insira a chave da API do Google Gemini no menu lateral ou dashboard.");
+    const activeKey = getActiveLLMKey(llmConfig);
+    const providerInfo = LLM_PROVIDERS[llmConfig.activeProvider];
+
+    if (!activeKey.trim()) {
+      showErrorModal(`Por favor, insira a chave da API do ${providerInfo.name} nas configurações de IA.`);
+      setIsLLMModalOpen(true);
       return;
     }
     if (!currentPrompt.trim()) {
@@ -302,7 +308,7 @@ export default function App() {
     }
 
     setIsLoading(true);
-    setStatusMsg("Analisando contexto e gerando metadados reais com a IA...");
+    setStatusMsg(`Analisando contexto com a IA (${providerInfo.name})...`);
 
     let selectedSystemPrompt =
       mode === "low-level"
@@ -314,53 +320,13 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    text: `${selectedSystemPrompt}\n\nCÓDIGO/CONTEXTO A ANALISAR:\n${currentPrompt}`,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType: "application/json",
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || "Erro na chamada da API");
-      }
-
-      const data = await response.json();
-      const rawJsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!rawJsonText) {
-        throw new Error("O modelo não retornou resposta.");
-      }
-
-      const parsedData = JSON.parse(rawJsonText);
-
-      if (!parsedData.mermaidCode) {
-        throw new Error("A resposta da IA não contém o campo mermaidCode.");
-      }
+      const result = await generateArchitectureDiagram(llmConfig, currentPrompt, selectedSystemPrompt);
 
       setStatusMsg("Renderizando diagrama e atrelando metadados aos nós...");
-      setMermaidCode(parsedData.mermaidCode);
-      setMermaidSequenceCode(parsedData.mermaidSequenceCode || "");
-      setNodesMetadata(parsedData.nodes || {});
-      setAgentPrompt(parsedData.agentPrompt || "");
+      setMermaidCode(result.mermaidCode);
+      setMermaidSequenceCode(result.mermaidSequenceCode || "");
+      setNodesMetadata(result.nodes || {});
+      setAgentPrompt(result.agentPrompt || "");
     } catch (error: any) {
       showErrorModal(error.message || String(error));
     } finally {
@@ -369,13 +335,17 @@ export default function App() {
   };
 
   const handleGenerateFromImage = async (base64Image: string) => {
-    if (!apiKey.trim()) {
-      showErrorModal("Por favor, insira a chave da API do Google Gemini no menu lateral.");
+    const activeKey = getActiveLLMKey(llmConfig);
+    const providerInfo = LLM_PROVIDERS[llmConfig.activeProvider];
+
+    if (!activeKey.trim()) {
+      showErrorModal(`Por favor, insira a chave da API do ${providerInfo.name} nas configurações de IA.`);
+      setIsLLMModalOpen(true);
       return;
     }
 
     setIsLoading(true);
-    setStatusMsg("Analisando o desenho feito a mão livre com a IA multimodal...");
+    setStatusMsg(`Analisando o desenho feito a mão livre com a IA multimodal (${providerInfo.name})...`);
 
     let selectedSystemPrompt =
       mode === "low-level"
@@ -387,59 +357,13 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    text: `${selectedSystemPrompt}\n\nANALISE O DESENHO/ESBOÇO ANEXADO E CONVERTA-O PARA A ESTRUTURA PEDIDA NO CONTRATO JSON:`,
-                  },
-                  {
-                    inlineData: {
-                      mimeType: "image/png",
-                      data: base64Image,
-                    },
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType: "application/json",
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || "Erro na chamada da API Multimodal");
-      }
-
-      const data = await response.json();
-      const rawJsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!rawJsonText) {
-        throw new Error("O modelo multimodal não retornou resposta.");
-      }
-
-      const parsedData = JSON.parse(rawJsonText);
-
-      if (!parsedData.mermaidCode) {
-        throw new Error("A resposta da IA não contém o campo mermaidCode.");
-      }
+      const result = await generateFromImageSketch(llmConfig, base64Image, selectedSystemPrompt);
 
       setStatusMsg("Desenho analisado com sucesso! Renderizando diagrama e metadados...");
-      setMermaidCode(parsedData.mermaidCode);
-      setMermaidSequenceCode(parsedData.mermaidSequenceCode || "");
-      setNodesMetadata(parsedData.nodes || {});
-      setAgentPrompt(parsedData.agentPrompt || "");
+      setMermaidCode(result.mermaidCode);
+      setMermaidSequenceCode(result.mermaidSequenceCode || "");
+      setNodesMetadata(result.nodes || {});
+      setAgentPrompt(result.agentPrompt || "");
     } catch (error: any) {
       showErrorModal(error.message || String(error));
     } finally {
@@ -451,58 +375,21 @@ export default function App() {
     brokenCode: string,
     errorMsg: string
   ) => {
-    if (!apiKey.trim()) {
-      showErrorModal("Por favor, insira a chave da API do Google Gemini no menu lateral.");
+    const activeKey = getActiveLLMKey(llmConfig);
+    const providerInfo = LLM_PROVIDERS[llmConfig.activeProvider];
+
+    if (!activeKey.trim()) {
+      showErrorModal(`Por favor, insira a chave da API do ${providerInfo.name} nas configurações de IA.`);
+      setIsLLMModalOpen(true);
       return;
     }
 
     setIsLoading(true);
-    setStatusMsg("Regerando exclusivamente o gráfico Mermaid com a IA...");
+    setStatusMsg(`Regerando exclusivamente o gráfico Mermaid com a IA (${providerInfo.name})...`);
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    text: `O código Mermaid a seguir apresentou um erro ao ser montado na biblioteca Mermaid:\n\nERRO: ${errorMsg}\n\nCÓDIGO COM ERRO:\n${brokenCode}\n\nInstrução: Corrija a sintaxe do código Mermaid. Garanta estritamente que se houver N arestas, os índices das diretivas linkStyle devem ir APENAS de 0 a N-1.\n\nRetorne EXCLUSIVAMENTE um objeto JSON no formato:\n{\n  "mermaidCode": "graph TD\\n  ..."\n}`,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType: "application/json",
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || "Erro na chamada da API");
-      }
-
-      const data = await response.json();
-      const rawJsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!rawJsonText) {
-        throw new Error("O modelo não retornou resposta.");
-      }
-
-      const parsedData = JSON.parse(rawJsonText);
-
-      if (!parsedData.mermaidCode) {
-        throw new Error("A resposta não contém o campo mermaidCode.");
-      }
-
-      setMermaidCode(parsedData.mermaidCode);
+      const result = await regenerateGraphSyntax(llmConfig, brokenCode, errorMsg);
+      setMermaidCode(result.mermaidCode);
       setStatusMsg("Gráfico regerado com sucesso pela IA!");
     } catch (error: any) {
       showErrorModal("Erro ao regerar gráfico: " + (error.message || String(error)));
@@ -554,6 +441,13 @@ export default function App() {
         onConfirmDelete={handleConfirmDeleteSubProject}
       />
 
+      <LLMConfigModal
+        isOpen={isLLMModalOpen}
+        onClose={() => setIsLLMModalOpen(false)}
+        config={llmConfig}
+        onSaveConfig={handleSaveLLMConfig}
+      />
+
       {view === "dashboard" ? (
         <DashboardView
           projects={workspaces}
@@ -562,8 +456,8 @@ export default function App() {
           onEditProject={(ws) => setWorkspaceToEdit(ws)}
           onDuplicateProject={handleDuplicateWorkspace}
           onDeleteProject={(ws) => setWorkspaceToDelete(ws)}
-          apiKey={apiKey}
-          setApiKey={setApiKey}
+          llmConfig={llmConfig}
+          onOpenLLMConfig={() => setIsLLMModalOpen(true)}
         />
       ) : (
         <div className="relative flex h-full w-full overflow-hidden">
@@ -586,8 +480,8 @@ export default function App() {
             onDeleteSubProject={handleRequestDeleteSubProject}
             onDeleteWorkspace={(ws) => setWorkspaceToDelete(ws)}
             onBackToDashboard={() => setView("dashboard")}
-            apiKey={apiKey}
-            setApiKey={setApiKey}
+            llmConfig={llmConfig}
+            onOpenLLMConfig={() => setIsLLMModalOpen(true)}
             promptInput={currentPrompt}
             setPromptInput={setCurrentPrompt}
             mode={mode}

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { Project } from "../types/project";
+import type { LLMConfig } from "../types/llm";
+import { getActiveLLMKey, getActiveLLMModel, LLM_PROVIDERS } from "../utils/llmStorage";
 
 interface DashboardViewProps {
   projects: Project[];
@@ -8,8 +10,8 @@ interface DashboardViewProps {
   onEditProject: (project: Project) => void;
   onDuplicateProject: (projectId: string) => void;
   onDeleteProject: (workspace: Project) => void;
-  apiKey: string;
-  setApiKey: (key: string) => void;
+  llmConfig: LLMConfig;
+  onOpenLLMConfig: () => void;
 }
 
 export function DashboardView({
@@ -19,8 +21,8 @@ export function DashboardView({
   onEditProject,
   onDuplicateProject,
   onDeleteProject,
-  apiKey,
-  setApiKey,
+  llmConfig,
+  onOpenLLMConfig,
 }: DashboardViewProps) {
   // Aba de Origem: "personal" (padrão) | "examples" | "all"
   const [activeTab, setActiveTab] = useState<"personal" | "examples" | "all">(
@@ -30,8 +32,6 @@ export function DashboardView({
   const [modeFilter, setModeFilter] = useState<
     "all" | "low-level" | "high-level"
   >("all");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-
   // Separação de Projetos
   const personalProjects = projects.filter((p) => !p.isExample);
   const exampleProjects = projects.filter((p) => !!p.isExample);
@@ -105,61 +105,40 @@ export function DashboardView({
           </div>
         </div>
 
-        {/* Ações de Topo: Config da Chave API + Botão Criar Projeto */}
+        {/* Ações de Topo: Config do Provedor LLM + Botão Criar Projeto */}
         <div className="flex items-center gap-3">
-          {/* Badge / Input da API Key Gemini */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-2xs ${
-                apiKey.trim()
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100"
-                  : "bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100"
-              }`}
-              title="Configurar chave da API do Google Gemini"
-            >
-              <i
-                className={`fa-solid ${apiKey.trim() ? "fa-key text-emerald-600" : "fa-triangle-exclamation text-amber-600"}`}
-              ></i>
-              <span className="hidden md:inline">
-                {apiKey.trim()
-                  ? "Gemini Key Conectada"
-                  : "Configurar Gemini API Key"}
-              </span>
-              <span className="md:hidden">
-                {apiKey.trim() ? "API OK" : "API Key"}
-              </span>
-            </button>
+          {/* Badge de Configuração do Provedor de IA */}
+          {(() => {
+            const activeKey = getActiveLLMKey(llmConfig);
+            const activeProviderInfo = LLM_PROVIDERS[llmConfig.activeProvider];
+            const activeModel = getActiveLLMModel(llmConfig);
+            const hasKey = !!activeKey.trim();
 
-            {showApiKeyInput && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl z-50 animate-fadeIn">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                    <i className="fa-solid fa-key text-indigo-600"></i>
-                    Google Gemini API Key
+            return (
+              <button
+                type="button"
+                onClick={onOpenLLMConfig}
+                className={`px-3.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer shadow-2xs ${
+                  hasKey
+                    ? "bg-slate-900 border-slate-800 text-white hover:bg-slate-800"
+                    : "bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100"
+                }`}
+                title={`Provedor Ativo: ${activeProviderInfo.name} (${activeModel})`}
+              >
+                <i className={`${activeProviderInfo.icon} text-sm ${hasKey ? "text-indigo-400" : "text-amber-600"}`}></i>
+                <div className="flex flex-col text-left">
+                  <div className="flex items-center gap-1.5 leading-tight">
+                    <span>{activeProviderInfo.name}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${hasKey ? "bg-emerald-400" : "bg-amber-400"}`}></span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
+                    {activeModel}
                   </span>
-                  <button
-                    onClick={() => setShowApiKeyInput(false)}
-                    className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
-                  >
-                    ✕
-                  </button>
                 </div>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Cole sua chave da API aqui..."
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 mb-2"
-                />
-                <p className="text-[10px] text-slate-500">
-                  Necessária para geração automática de metadados e diagramas
-                  Mermaid via IA Gemini.
-                </p>
-              </div>
-            )}
-          </div>
+                <i className="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-1"></i>
+              </button>
+            );
+          })()}
 
           {/* Botão + Novo Projeto */}
           <button

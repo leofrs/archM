@@ -6,7 +6,7 @@ interface LoadingModalProps {
 }
 
 const DEFAULT_LOADING_STEPS = [
-  "Estabelecendo conexão com o modelo Gemini AI...",
+  "Estabelecendo conexão com o modelo de IA...",
   "Analisando contexto e regras de arquitetura...",
   "Mapeando componentes, fluxos e metadados dos nós...",
   "Sintetizando estrutura Mermaid e definições visuais...",

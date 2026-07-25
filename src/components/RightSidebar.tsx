@@ -232,7 +232,7 @@ export function RightSidebar({
               <div className="p-4 bg-slate-50 border border-slate-200 border-dashed rounded-xl text-center">
                 <i className="fa-solid fa-robot text-slate-300 text-2xl mb-2 block"></i>
                 <p className="text-xs text-slate-500">
-                  Nenhum prompt foi gerado ainda. Gere um diagrama com a IA Gemini para visualizar o prompt do agente.
+                  Nenhum prompt foi gerado ainda. Gere um diagrama com a IA para visualizar o prompt do agente.
                 </p>
               </div>
             )}

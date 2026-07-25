@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import type { Workspace, SubProject } from "../types/project";
+import type { LLMConfig } from "../types/llm";
+import { getActiveLLMKey, getActiveLLMModel, LLM_PROVIDERS } from "../utils/llmStorage";
 
 interface SidebarProps {
   workspace: Workspace | null;
@@ -11,8 +13,8 @@ interface SidebarProps {
   onDeleteSubProject: (subProjectId: string) => void;
   onDeleteWorkspace?: (workspace: Workspace) => void;
   onBackToDashboard: () => void;
-  apiKey: string;
-  setApiKey: (key: string) => void;
+  llmConfig: LLMConfig;
+  onOpenLLMConfig: () => void;
   promptInput: string;
   setPromptInput: (input: string) => void;
   mode: "low-level" | "high-level";
@@ -43,8 +45,8 @@ export function Sidebar({
   onDeleteSubProject,
   onDeleteWorkspace,
   onBackToDashboard,
-  apiKey,
-  setApiKey,
+  llmConfig,
+  onOpenLLMConfig,
   promptInput,
   setPromptInput,
   mode: _mode,
@@ -60,7 +62,6 @@ export function Sidebar({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileBadge, setFileBadge] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   // Estado para controlar a expansão INDEPENDENTE de cada sub-rota (Set de IDs)
   const [expandedSubIds, setExpandedSubIds] = useState<Set<string>>(
@@ -381,45 +382,45 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* 2. CHAVE GEMINI API KEY (ESTILO CLÁSSICO CLARO) */}
-      <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-            <i className={`fa-solid fa-key ${apiKey.trim() ? "text-emerald-600" : "text-amber-600"}`}></i>
-            <span>{apiKey.trim() ? "Gemini Key Conectada" : "Sem Chave API"}</span>
-          </div>
+      {/* 2. CONFIGURAÇÃO DE PROVEDOR LLM */}
+      {(() => {
+        const activeKey = getActiveLLMKey(llmConfig);
+        const activeProviderInfo = LLM_PROVIDERS[llmConfig.activeProvider];
+        const activeModel = getActiveLLMModel(llmConfig);
+        const hasKey = !!activeKey.trim();
 
-          <button
-            type="button"
-            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer"
-          >
-            {showApiKeyInput ? "Ocultar" : "Configurar"}
-          </button>
-        </div>
-
-        {showApiKeyInput && (
-          <div className="mt-2.5 space-y-2 pt-2.5 border-t border-slate-200">
-            <input
-              type="password"
-              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="Cole sua Gemini API Key..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-            <div className="flex items-center justify-between text-[10px]">
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noreferrer"
-                className="text-indigo-600 hover:underline font-medium"
+        return (
+          <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                <i className={`${activeProviderInfo.icon} text-indigo-600`}></i>
+                <span>{activeProviderInfo.name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenLLMConfig}
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer"
               >
-                Gerar chave grátis no Google AI Studio ↗
-              </a>
+                Configurar IA
+              </button>
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <span className="font-mono text-[10px] text-slate-600 truncate max-w-[150px]">
+                {activeModel}
+              </span>
+              <span
+                className={`font-semibold text-[10px] px-2 py-0.5 rounded-full ${
+                  hasKey
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                }`}
+              >
+                {hasKey ? "Conectado" : "Sem Chave"}
+              </span>
             </div>
           </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* 3. CABEÇALHO DA SEÇÃO DE SUB-ROTAS */}
       <div className="flex items-center justify-between mb-2.5">
