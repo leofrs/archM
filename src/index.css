@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+/* Garantia de isolamento e exibição do Excalidraw em tablets/mobile */
+.excalidraw-container,
+.excalidraw {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+.excalidraw .layer-ui__wrapper {
+  z-index: 10 !important;
+}

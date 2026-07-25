@@ -57,10 +57,18 @@ export const ExcalidrawView = forwardRef<ExcalidrawViewRef, ExcalidrawViewProps>
     }));
 
     return (
-      <div className="w-full h-full relative overflow-hidden flex flex-col">
+      <div className="w-full h-full relative overflow-hidden flex flex-col isolate">
         <div className="w-full h-full flex-1">
           <Excalidraw
             excalidrawAPI={(api) => setExcalidrawAPI(api)}
+            zenModeEnabled={false}
+            onChange={(_elements, state) => {
+              if (state?.zenModeEnabled || state?.penMode) {
+                excalidrawAPI?.updateScene({
+                  appState: { zenModeEnabled: false, penMode: false },
+                });
+              }
+            }}
             UIOptions={{
               canvasActions: {
                 changeViewBackgroundColor: true,

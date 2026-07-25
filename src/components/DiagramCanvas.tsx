@@ -317,7 +317,7 @@ export function DiagramCanvas({
       className="flex-1 relative flex flex-col bg-slate-50 overflow-hidden h-full w-full"
     >
       {/* CABEÇALHO SUPERIOR FIXO UNIFICADO */}
-      <header className="min-h-14 py-2 bg-white border-b border-slate-200 px-3 sm:px-4 shrink-0 flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 z-30 shadow-xs">
+      <header className="min-h-14 py-2 bg-white border-b border-slate-200 px-3 sm:px-4 shrink-0 flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 relative z-50 shadow-xs">
         {/* Esquerda: Menu Lateral + Seletor de Modo */}
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           {!isSidebarOpen && (
@@ -567,7 +567,7 @@ export function DiagramCanvas({
       )}
 
       {/* ÁREA DO CANVAS (CONTAINER FLEX-1) */}
-      <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col">
+      <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col isolate">
         {/* PROMPT DO AGENTE (HARNESS) - PAINEL SOBREPOSTO EXPANSÍVEL */}
         {agentPrompt && (
           <div className="absolute top-4 right-4 z-20 pointer-events-none flex justify-center">

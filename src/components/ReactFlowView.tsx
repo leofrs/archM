@@ -148,26 +148,6 @@ function ReactFlowContent({
     [setNodes],
   );
 
-  const handleAddCustomNode = () => {
-    const label = window.prompt("Nome do novo bloco:", "Novo Bloco");
-    if (!label) return;
-
-    const id = `Node_${Math.random().toString(36).substring(2, 7)}`;
-    const newNode: RFNode = {
-      id,
-      data: {
-        label: `<i class='fa-solid fa-cube mr-1.5'></i> ${label}`,
-        rawLabel: label,
-        cssClass: "default",
-      },
-      position: { x: 150 + Math.random() * 40, y: 150 + Math.random() * 40 },
-      style: getNodeStyleByClass("default"),
-    };
-
-    setNodes((nds) => [...nds, newNode]);
-    setIsDirty(true);
-  };
-
   // Drag & Drop Handlers
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
