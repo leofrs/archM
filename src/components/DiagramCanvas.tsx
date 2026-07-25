@@ -3,8 +3,8 @@ import mermaid from "mermaid";
 import svgPanZoom from "svg-pan-zoom";
 import { NodeModal, type InspectorNode } from "./NodeModal";
 import { ReactFlowView } from "./ReactFlowView";
-import { AgentPromptViewer } from "./AgentPromptViewer";
 import { ExcalidrawView, type ExcalidrawViewRef } from "./ExcalidrawView";
+import { RightSidebar } from "./RightSidebar";
 import {
   renderMermaidWithFallback,
   type FallbackInfo,
@@ -66,10 +66,17 @@ export function DiagramCanvas({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<InspectorNode | null>(null);
   const [fallbackInfo, setFallbackInfo] = useState<FallbackInfo | null>(null);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
 
   const isLowLevel = mode === "low-level";
   const activeMermaidCode =
     mermaidSubMode === "sequence" ? mermaidSequenceCode || "" : mermaidCode;
+
+  useEffect(() => {
+    if (agentPrompt) {
+      setIsRightSidebarOpen(true);
+    }
+  }, [agentPrompt]);
 
   useEffect(() => {
     if (!document.getElementById("font-awesome-cdn")) {
@@ -317,7 +324,7 @@ export function DiagramCanvas({
       className="flex-1 relative flex flex-col bg-slate-50 overflow-hidden h-full w-full"
     >
       {/* CABEÇALHO SUPERIOR FIXO UNIFICADO */}
-      <header className="min-h-14 py-2 bg-white border-b border-slate-200 px-3 sm:px-4 shrink-0 flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 relative z-50 shadow-xs">
+      <header className="min-h-14 py-2 bg-white border-b border-slate-200 px-3 sm:px-4 shrink-0 flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 relative z-30 shadow-xs">
         {/* Esquerda: Menu Lateral + Seletor de Modo */}
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           {!isSidebarOpen && (
@@ -328,7 +335,7 @@ export function DiagramCanvas({
               title="Abrir Menu Lateral"
             >
               <i className="fa-solid fa-bars text-sm"></i>
-              <span className="hidden xs:inline">Menu</span>
+              <span className="xs:inline">Menu</span>
             </button>
           )}
 
@@ -411,100 +418,31 @@ export function DiagramCanvas({
           )}
         </div>
 
-        {/* Direita: Ações Contextuais */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {viewMode === "excalidraw" && (
-            <button
-              type="button"
-              onClick={() => excalidrawRef.current?.analyzeDrawing()}
-              disabled={isLoading}
-              className="h-9 px-2.5 sm:px-3.5 border border-indigo-600 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl cursor-pointer text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
-              title="Enviar o desenho livre para ser analisado pela IA Gemini"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span className="hidden sm:inline">
-                    Analisando Desenho...
-                  </span>
-                </>
-              ) : (
-                <>
-                  <i className="fa-solid fa-wand-magic-sparkles"></i>
-                  <span className="hidden sm:inline">
-                    Analisar Desenho com IA
-                  </span>
-                  <span className="sm:hidden">Analisar</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {viewMode === "mermaid" && (
-            <>
-              <button
-                className="w-8 h-8 sm:w-9 sm:h-9 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-base sm:text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
-                onClick={handleZoomIn}
-                title="Aumentar Zoom"
-              >
-                +
-              </button>
-              <button
-                className="w-8 h-8 sm:w-9 sm:h-9 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-base sm:text-lg font-bold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
-                onClick={handleZoomOut}
-                title="Diminuir Zoom"
-              >
-                -
-              </button>
-              <button
-                className="h-8 sm:h-9 px-2 sm:px-3 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600"
-                onClick={handleResetZoom}
-                title="Resetar Visão"
-              >
-                <i className="fa-solid fa-arrows-to-dot sm:mr-1"></i>
-                <span className="hidden md:inline">Resetar Visão</span>
-              </button>
-            </>
-          )}
-
+        {/* Direita: Botão Toggle do Menu Lateral de Ações & Prompt */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            className={`h-8 sm:h-9 px-2 sm:px-3 border rounded-lg cursor-pointer text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
-              showCodeEditor
+            type="button"
+            onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+            className={`h-9 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ${
+              isRightSidebarOpen
                 ? "bg-indigo-600 text-white border-indigo-600"
-                : "border-slate-200 bg-slate-100 text-slate-800 hover:bg-slate-200 hover:text-indigo-600"
+                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-600"
             }`}
-            onClick={() => setShowCodeEditor(!showCodeEditor)}
-            title="Abrir/Fechar Editor de Código Mermaid"
+            title={
+              isRightSidebarOpen
+                ? "Fechar Painel de Ações & Prompt"
+                : "Abrir Painel de Ações & Prompt"
+            }
           >
-            <i className="fa-solid fa-code"></i>
-            <span className="hidden sm:inline">
-              {showCodeEditor ? "Ocultar Editor" : "Ver Código"}
-            </span>
+            <i className="fa-solid fa-sliders"></i>
+            <span className="hidden sm:inline">Ações & Prompt</span>
+            {agentPrompt && (
+              <span
+                className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+                title="Prompt Gerado Disponível"
+              ></span>
+            )}
           </button>
-
-          <button
-            className="h-8 sm:h-9 px-2 sm:px-3 border border-slate-200 bg-slate-100 rounded-lg cursor-pointer text-xs font-semibold text-slate-800 flex items-center justify-center transition-colors hover:bg-slate-200 hover:text-indigo-600 gap-1.5"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
-          >
-            <i
-              className={`fa-solid ${isFullscreen ? "fa-compress" : "fa-expand"}`}
-            ></i>
-            <span className="hidden lg:inline">
-              {isFullscreen ? "Sair Fullscreen" : "Tela Cheia"}
-            </span>
-          </button>
-
-          {viewMode === "mermaid" && (
-            <button
-              className="h-8 sm:h-9 px-2 sm:px-3 border border-indigo-100 bg-indigo-50 rounded-lg cursor-pointer text-xs font-semibold text-indigo-600 flex items-center justify-center transition-colors hover:bg-indigo-100 gap-1"
-              onClick={handleDownload}
-              title="Baixar diagrama em SVG"
-            >
-              <i className="fa-solid fa-download"></i>
-              <span className="hidden sm:inline">Baixar SVG</span>
-            </button>
-          )}
         </div>
       </header>
 
@@ -566,69 +504,81 @@ export function DiagramCanvas({
         </div>
       )}
 
-      {/* ÁREA DO CANVAS (CONTAINER FLEX-1) */}
-      <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col isolate">
-        {/* PROMPT DO AGENTE (HARNESS) - PAINEL SOBREPOSTO EXPANSÍVEL */}
-        {agentPrompt && (
-          <div className="absolute top-4 right-4 z-20 pointer-events-none flex justify-center">
-            <div className="w-full max-w-5xl pointer-events-auto px-2">
-              <AgentPromptViewer prompt={agentPrompt} />
+      {/* ÁREA CENTRAL CONTAINER (CANVAS + MENU LATERAL DIREITO) */}
+      <div className="flex-1 w-full h-full relative overflow-hidden flex flex-row isolate">
+        {/* ÁREA DO CANVAS (CONTAINER FLEX-1) */}
+        <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col isolate">
+          {/* CONTEÚDO 1: VISÃO MERMAID SVG */}
+          {viewMode === "mermaid" && (
+            <div
+              id="mermaid-container"
+              ref={containerRef}
+              className="w-full h-full overflow-hidden flex justify-center items-center [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-none"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(100, 116, 139, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 116, 139, 0.1) 1px, transparent 1px)",
+                backgroundSize: "40px 40px",
+              }}
+            >
+              {!activeMermaidCode && (
+                <div className="text-slate-500 text-sm text-center">
+                  <div className="text-3xl mb-2.5">⌘</div>O diagrama gerado
+                  aparecerá aqui.
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* CONTEÚDO 1: VISÃO MERMAID SVG */}
-        {viewMode === "mermaid" && (
-          <div
-            id="mermaid-container"
-            ref={containerRef}
-            className="w-full h-full overflow-hidden flex justify-center items-center [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-none"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(100, 116, 139, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 116, 139, 0.1) 1px, transparent 1px)",
-              backgroundSize: "40px 40px",
-            }}
-          >
-            {!activeMermaidCode && (
-              <div className="text-slate-500 text-sm text-center">
-                <div className="text-3xl mb-2.5">⌘</div>O diagrama gerado
-                aparecerá aqui.
-              </div>
-            )}
-          </div>
-        )}
+          {/* CONTEÚDO 2: EDITOR INTERATIVO REACT FLOW */}
+          {viewMode === "reactflow" && (
+            <ReactFlowView
+              mermaidCode={editableCode}
+              nodesMetadata={nodesMetadata}
+              onSaveMermaid={handleSaveFromReactFlow}
+            />
+          )}
 
-        {/* CONTEÚDO 2: EDITOR INTERATIVO REACT FLOW */}
-        {viewMode === "reactflow" && (
-          <ReactFlowView
-            mermaidCode={editableCode}
-            nodesMetadata={nodesMetadata}
-            onSaveMermaid={handleSaveFromReactFlow}
-          />
-        )}
+          {/* CONTEÚDO 3: DESENHO LIVRE EXCALIDRAW */}
+          {viewMode === "excalidraw" && (
+            <ExcalidrawView
+              ref={excalidrawRef}
+              onAnalyzeDrawing={(base64Image) => {
+                if (onAnalyzeDrawing) {
+                  onAnalyzeDrawing(base64Image);
+                }
+              }}
+              isLoading={!!isLoading}
+            />
+          )}
 
-        {/* CONTEÚDO 3: DESENHO LIVRE EXCALIDRAW */}
-        {viewMode === "excalidraw" && (
-          <ExcalidrawView
-            ref={excalidrawRef}
-            onAnalyzeDrawing={(base64Image) => {
-              if (onAnalyzeDrawing) {
-                onAnalyzeDrawing(base64Image);
-              }
-            }}
-            isLoading={!!isLoading}
-          />
-        )}
+          {/* Modal de Inspeção do Nó no Diagrama Mermaid */}
+          {viewMode === "mermaid" && (
+            <NodeModal
+              node={selectedNode}
+              isOpen={!!selectedNode}
+              onClose={() => setSelectedNode(null)}
+              isEditable={false}
+            />
+          )}
+        </div>
 
-        {/* Modal de Inspeção do Nó no Diagrama Mermaid */}
-        {viewMode === "mermaid" && (
-          <NodeModal
-            node={selectedNode}
-            isOpen={!!selectedNode}
-            onClose={() => setSelectedNode(null)}
-            isEditable={false}
-          />
-        )}
+        {/* MENU LATERAL DIREITO (PAINEL DE AÇÕES E PROMPT GERADO) */}
+        <RightSidebar
+          isOpen={isRightSidebarOpen}
+          onClose={() => setIsRightSidebarOpen(false)}
+          viewMode={viewMode}
+          agentPrompt={agentPrompt}
+          showCodeEditor={showCodeEditor}
+          setShowCodeEditor={setShowCodeEditor}
+          isFullscreen={isFullscreen}
+          toggleFullscreen={toggleFullscreen}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetZoom={handleResetZoom}
+          onDownloadSvg={handleDownload}
+          onAnalyzeDrawing={() => excalidrawRef.current?.analyzeDrawing()}
+          isLoading={isLoading}
+        />
       </div>
 
       {/* Editor de Código Mermaid */}
