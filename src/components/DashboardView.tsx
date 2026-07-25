@@ -7,7 +7,7 @@ interface DashboardViewProps {
   onCreateProject: () => void;
   onEditProject: (project: Project) => void;
   onDuplicateProject: (projectId: string) => void;
-  onDeleteProject: (projectId: string) => void;
+  onDeleteProject: (workspace: Project) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
 }
@@ -49,7 +49,10 @@ export function DashboardView({
       p.tags?.some((t) => t.toLowerCase().includes(searchTerm.toLowerCase()));
 
     // Filtro por Modo de Arquitetura
-    const matchesMode = modeFilter === "all" ? true : p.mode === modeFilter;
+    const matchesMode =
+      modeFilter === "all"
+        ? true
+        : p.subProjects?.some((sub) => sub.mode === modeFilter);
 
     return matchesSearch && matchesMode;
   });
@@ -57,11 +60,11 @@ export function DashboardView({
   // Métricas Globais Restritas aos Projetos Pessoais do Usuário
   const personalCount = personalProjects.length;
   const examplesCount = exampleProjects.length;
-  const lowLevelPersonalCount = personalProjects.filter(
-    (p) => p.mode === "low-level",
+  const lowLevelPersonalCount = personalProjects.filter((p) =>
+    p.subProjects?.some((sub) => sub.mode === "low-level")
   ).length;
-  const highLevelPersonalCount = personalProjects.filter(
-    (p) => p.mode === "high-level",
+  const highLevelPersonalCount = personalProjects.filter((p) =>
+    p.subProjects?.some((sub) => sub.mode === "high-level")
   ).length;
 
   const formatDate = (isoString: string) => {
@@ -350,7 +353,8 @@ export function DashboardView({
         {filteredProjects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredProjects.map((proj) => {
-              const isLowLevel = proj.mode === "low-level";
+              const activeSub = proj.subProjects?.find((s) => s.id === proj.activeSubProjectId) || proj.subProjects?.[0];
+              const isLowLevel = activeSub ? activeSub.mode === "low-level" : true;
               const isExample = !!proj.isExample;
 
               return (
@@ -400,6 +404,22 @@ export function DashboardView({
                           >
                             {isLowLevel ? "Baixo Nível" : "Alto Nível"}
                           </span>
+
+                          {/* Botão de Exclusão Direta no Topo do Card (Sempre Visível) */}
+                          {!isExample && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteProject(proj);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white transition-all cursor-pointer text-xs font-bold flex items-center gap-1.5 shadow-2xs ml-1"
+                              title="Excluir Workspace Permanentemente"
+                            >
+                              <i className="fa-solid fa-trash-can text-xs"></i>
+                              <span className="text-[10px]">Excluir</span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -429,13 +449,13 @@ export function DashboardView({
                         ))}
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium pt-2 border-t border-slate-100">
-                        <span className="flex items-center gap-1.5">
-                          <i className="fa-solid fa-cubes text-slate-400"></i>
-                          {proj.nodeCount || 4} nós mapeados
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-100">
+                        <span className="flex items-center gap-1.5 font-bold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-lg border border-indigo-100/80">
+                          <i className="fa-solid fa-layer-group text-indigo-500"></i>
+                          {proj.subProjects?.length || 1} {proj.subProjects?.length === 1 ? "Sub-projeto / Rota" : "Sub-projetos / Rotas"}
                         </span>
                         <span
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 text-slate-400"
                           title="Última Modificação"
                         >
                           <i className="fa-regular fa-clock"></i>
@@ -450,11 +470,11 @@ export function DashboardView({
                     {/* Para projetos pessoais: Editar, Duplicar, Excluir */}
                     {!isExample ? (
                       <>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => onEditProject(proj)}
-                            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white transition-colors cursor-pointer text-xs"
+                            className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white border border-slate-200/60 transition-colors cursor-pointer text-xs"
                             title="Editar Informações do Projeto"
                           >
                             <i className="fa-solid fa-pen-to-square"></i>
@@ -462,24 +482,16 @@ export function DashboardView({
                           <button
                             type="button"
                             onClick={() => onDuplicateProject(proj.id)}
-                            className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors cursor-pointer text-xs"
+                            className="p-2 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-slate-200/60 transition-colors cursor-pointer text-xs"
                             title="Duplicar Projeto"
                           >
                             <i className="fa-solid fa-copy"></i>
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  `Tem certeza que deseja excluir o projeto "${proj.name}"?`,
-                                )
-                              ) {
-                                onDeleteProject(proj.id);
-                              }
-                            }}
-                            className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white transition-colors cursor-pointer text-xs"
-                            title="Excluir Projeto"
+                            onClick={() => onDeleteProject(proj)}
+                            className="p-2 rounded-lg text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer text-xs font-bold"
+                            title="Excluir Workspace Permanentemente"
                           >
                             <i className="fa-solid fa-trash-can"></i>
                           </button>

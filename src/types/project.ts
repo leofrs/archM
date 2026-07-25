@@ -1,7 +1,7 @@
-export interface Project {
+export interface SubProject {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   mode: "low-level" | "high-level";
   createdAt: string;
   updatedAt: string;
@@ -13,10 +13,23 @@ export interface Project {
   lowLevelPrompt?: string;
   highLevelPrompt?: string;
   includeEdgeCases?: boolean;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
   tags?: string[];
   icon?: string;
-  isExample?: boolean; // True para os projetos de demonstração predefinidos
+  isExample?: boolean;
+  activeSubProjectId?: string;
+  subProjects: SubProject[];
 }
+
+// Alias para manter compatibilidade retroativa com código existente
+export type Project = Workspace;
 
 export interface ProjectTemplate {
   id: string;
@@ -24,9 +37,19 @@ export interface ProjectTemplate {
   description: string;
   mode: "low-level" | "high-level";
   icon: string;
+  tags: string[];
   mermaidCode: string;
   mermaidSequenceCode?: string;
   nodesMetadata?: Record<string, any>;
   prompt: string;
-  tags: string[];
+  defaultSubProjects?: Array<{
+    name: string;
+    description?: string;
+    mode: "low-level" | "high-level";
+    mermaidCode: string;
+    mermaidSequenceCode?: string;
+    nodesMetadata?: Record<string, any>;
+    prompt: string;
+  }>;
 }
+

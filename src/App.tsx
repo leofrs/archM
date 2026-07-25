@@ -5,13 +5,18 @@ import { ErrorModal } from "./components/ErrorModal";
 import { LoadingModal } from "./components/LoadingModal";
 import { DashboardView } from "./components/DashboardView";
 import { CreateProjectModal } from "./components/CreateProjectModal";
-import type { Project } from "./types/project";
+import { DeleteWorkspaceModal } from "./components/DeleteWorkspaceModal";
+import { DeleteSubProjectModal } from "./components/DeleteSubProjectModal";
+import type { Workspace, SubProject } from "./types/project";
 import {
-  getStoredProjects,
-  updateProjectInStorage,
-  createNewProject,
-  duplicateProjectInStorage,
-  deleteProjectFromStorage,
+  getStoredWorkspaces,
+  updateWorkspaceInStorage,
+  createNewWorkspace,
+  duplicateWorkspaceInStorage,
+  deleteWorkspaceFromStorage,
+  addSubProjectToWorkspace,
+  duplicateSubProjectInWorkspace,
+  deleteSubProjectFromWorkspace,
 } from "./utils/projectStorage";
 import {
   COMPLETE_HIGH_LEVEL_PROMPT,
@@ -23,15 +28,18 @@ export default function App() {
   // Navegação: Dashboard vs Workspace do Projeto
   const [view, setView] = useState<"dashboard" | "workspace">("dashboard");
 
-  // Projetos & Projeto Ativo
-  const [projects, setProjects] = useState<Project[]>(() => getStoredProjects());
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  // Lista de Workspaces & Workspace Ativo
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => getStoredWorkspaces());
+  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
+  const [activeSubProjectId, setActiveSubProjectId] = useState<string>("");
 
-  // Modais de Criação/Edição de Projetos
+  // Modais de Criação/Edição/Exclusão de Workspaces e Sub-projetos
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [workspaceToEdit, setWorkspaceToEdit] = useState<Workspace | null>(null);
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<Workspace | null>(null);
+  const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
 
-  // Config da API Gemini (mantida persistida no localStorage)
+  // Config da API Gemini (mantida no localStorage)
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("archm_gemini_key") || "");
 
   useEffect(() => {
@@ -40,7 +48,7 @@ export default function App() {
     }
   }, [apiKey]);
 
-  // Estados do Workspace do Projeto
+  // Estados Locais do Sub-projeto Ativo no Workspace
   const [lowLevelPrompt, setLowLevelPrompt] = useState("");
   const [highLevelPrompt, setHighLevelPrompt] = useState("");
 
@@ -69,26 +77,61 @@ export default function App() {
     }
   };
 
-  // Carregar um Projeto Selecionado no Workspace
-  const handleSelectProject = (project: Project) => {
-    setActiveProject(project);
-    setMode(project.mode);
-    setMermaidCode(project.mermaidCode || "");
-    setMermaidSequenceCode(project.mermaidSequenceCode || "");
-    setNodesMetadata(project.nodesMetadata || {});
-    setAgentPrompt(project.agentPrompt || "");
-    setLowLevelPrompt(project.lowLevelPrompt || (project.mode === "low-level" ? project.agentPrompt || "" : ""));
-    setHighLevelPrompt(project.highLevelPrompt || (project.mode === "high-level" ? project.agentPrompt || "" : ""));
-    setIncludeEdgeCases(project.includeEdgeCases || false);
+  // Carregar um Workspace Selecionado
+  const handleSelectWorkspace = (workspace: Workspace) => {
+    setActiveWorkspace(workspace);
+    const subToSelect =
+      workspace.subProjects.find((s) => s.id === workspace.activeSubProjectId) ||
+      workspace.subProjects[0];
+
+    if (subToSelect) {
+      loadSubProjectState(subToSelect);
+      setActiveSubProjectId(subToSelect.id);
+    }
     setView("workspace");
   };
 
-  // Sincronizar alterações do Workspace de volta com o projeto ativo no localStorage
-  useEffect(() => {
-    if (!activeProject || view !== "workspace") return;
+  // Carregar o estado local de um sub-projeto no workspace
+  const loadSubProjectState = (sub: SubProject) => {
+    setMode(sub.mode);
+    setMermaidCode(sub.mermaidCode || "");
+    setMermaidSequenceCode(sub.mermaidSequenceCode || "");
+    setNodesMetadata(sub.nodesMetadata || {});
+    setAgentPrompt(sub.agentPrompt || "");
+    setLowLevelPrompt(sub.lowLevelPrompt || (sub.mode === "low-level" ? sub.agentPrompt || "" : ""));
+    setHighLevelPrompt(sub.highLevelPrompt || (sub.mode === "high-level" ? sub.agentPrompt || "" : ""));
+    setIncludeEdgeCases(sub.includeEdgeCases || false);
+  };
 
-    const updated: Project = {
-      ...activeProject,
+  // Alternar entre Sub-projetos/Rotas dentro do Workspace
+  const handleSelectSubProject = (subProjectId: string) => {
+    if (!activeWorkspace) return;
+    const targetSub = activeWorkspace.subProjects.find((s) => s.id === subProjectId);
+    if (!targetSub) return;
+
+    setActiveSubProjectId(subProjectId);
+    loadSubProjectState(targetSub);
+
+    // Atualiza activeSubProjectId no Workspace
+    const updatedWs: Workspace = {
+      ...activeWorkspace,
+      activeSubProjectId: subProjectId,
+    };
+    setActiveWorkspace(updatedWs);
+    const newList = updateWorkspaceInStorage(updatedWs);
+    setWorkspaces(newList);
+  };
+
+  // Sincronizar alterações do sub-projeto ativo com o storage do Workspace
+  useEffect(() => {
+    if (!activeWorkspace || !activeSubProjectId || view !== "workspace") return;
+
+    const subIdx = activeWorkspace.subProjects.findIndex((s) => s.id === activeSubProjectId);
+    if (subIdx === -1) return;
+
+    const currentSub = activeWorkspace.subProjects[subIdx];
+    const updatedSub: SubProject = {
+      ...currentSub,
       mode,
       mermaidCode,
       mermaidSequenceCode,
@@ -97,10 +140,35 @@ export default function App() {
       lowLevelPrompt,
       highLevelPrompt,
       includeEdgeCases,
+      updatedAt: new Date().toISOString(),
     };
 
-    const newList = updateProjectInStorage(updated);
-    setProjects(newList);
+    // Só atualiza se houve mudança real nos campos
+    if (
+      currentSub.mode === updatedSub.mode &&
+      currentSub.mermaidCode === updatedSub.mermaidCode &&
+      currentSub.mermaidSequenceCode === updatedSub.mermaidSequenceCode &&
+      currentSub.agentPrompt === updatedSub.agentPrompt &&
+      currentSub.lowLevelPrompt === updatedSub.lowLevelPrompt &&
+      currentSub.highLevelPrompt === updatedSub.highLevelPrompt &&
+      currentSub.includeEdgeCases === updatedSub.includeEdgeCases &&
+      JSON.stringify(currentSub.nodesMetadata) === JSON.stringify(updatedSub.nodesMetadata)
+    ) {
+      return;
+    }
+
+    const newSubProjects = [...activeWorkspace.subProjects];
+    newSubProjects[subIdx] = updatedSub;
+
+    const updatedWs: Workspace = {
+      ...activeWorkspace,
+      subProjects: newSubProjects,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setActiveWorkspace(updatedWs);
+    const newList = updateWorkspaceInStorage(updatedWs);
+    setWorkspaces(newList);
   }, [
     mermaidCode,
     mermaidSequenceCode,
@@ -112,55 +180,114 @@ export default function App() {
     includeEdgeCases,
   ]);
 
-  // Criar ou Salvar Edição de Projeto
-  const handleSaveProjectForm = (data: {
+  // Criar ou Editar Workspace
+  const handleSaveWorkspaceForm = (data: {
     name: string;
     description: string;
     mode: "low-level" | "high-level";
-    templateId?: string;
+    initialSubProjectName?: string;
   }) => {
-    if (projectToEdit) {
-      // Edição de Projeto Existente
-      const updated = {
-        ...projectToEdit,
+    if (workspaceToEdit) {
+      // Edição de Workspace Existente
+      const updated: Workspace = {
+        ...workspaceToEdit,
         name: data.name,
         description: data.description,
-        mode: data.mode,
       };
-      const newList = updateProjectInStorage(updated);
-      setProjects(newList);
-      if (activeProject?.id === projectToEdit.id) {
-        setActiveProject(updated);
-        setMode(data.mode);
+      const newList = updateWorkspaceInStorage(updated);
+      setWorkspaces(newList);
+      if (activeWorkspace?.id === workspaceToEdit.id) {
+        setActiveWorkspace(updated);
       }
-      setProjectToEdit(null);
+      setWorkspaceToEdit(null);
     } else {
-      // Criação de Novo Projeto
-      const newProj = createNewProject(
+      // Criação de Novo Workspace
+      const newWs = createNewWorkspace(
         data.name,
         data.description,
         data.mode,
-        data.templateId
+        undefined,
+        data.initialSubProjectName
       );
-      setProjects(getStoredProjects());
-      handleSelectProject(newProj);
+      setWorkspaces(getStoredWorkspaces());
+      handleSelectWorkspace(newWs);
     }
   };
 
-  // Duplicar Projeto
-  const handleDuplicateProject = (projectId: string) => {
-    const { updatedList } = duplicateProjectInStorage(projectId);
-    setProjects(updatedList);
+  // Duplicar Workspace
+  const handleDuplicateWorkspace = (workspaceId: string) => {
+    const { updatedList } = duplicateWorkspaceInStorage(workspaceId);
+    setWorkspaces(updatedList);
   };
 
-  // Excluir Projeto
-  const handleDeleteProject = (projectId: string) => {
-    const updated = deleteProjectFromStorage(projectId);
-    setProjects(updated);
-    if (activeProject?.id === projectId) {
-      setActiveProject(null);
+  // Excluir Workspace
+  const handleDeleteWorkspace = (workspaceId: string) => {
+    const updated = deleteWorkspaceFromStorage(workspaceId);
+    setWorkspaces(updated);
+    if (activeWorkspace?.id === workspaceId) {
+      setActiveWorkspace(null);
       setView("dashboard");
     }
+  };
+
+  // Gerenciamento de Sub-projetos/Rotas dentro do Workspace
+  const handleAddSubProject = (name: string, subMode: "low-level" | "high-level") => {
+    if (!activeWorkspace) return;
+    const updated = addSubProjectToWorkspace(activeWorkspace.id, name, subMode);
+    if (updated) {
+      setActiveWorkspace(updated);
+      setWorkspaces(getStoredWorkspaces());
+      if (updated.activeSubProjectId) {
+        handleSelectSubProject(updated.activeSubProjectId);
+      }
+    }
+  };
+
+  const handleRenameSubProject = (subId: string, newName: string) => {
+    if (!activeWorkspace) return;
+    const newSubProjects = activeWorkspace.subProjects.map((s) =>
+      s.id === subId ? { ...s, name: newName, updatedAt: new Date().toISOString() } : s
+    );
+    const updatedWs: Workspace = {
+      ...activeWorkspace,
+      subProjects: newSubProjects,
+    };
+    setActiveWorkspace(updatedWs);
+    const newList = updateWorkspaceInStorage(updatedWs);
+    setWorkspaces(newList);
+  };
+
+  const handleDuplicateSubProject = (subId: string) => {
+    if (!activeWorkspace) return;
+    const updated = duplicateSubProjectInWorkspace(activeWorkspace.id, subId);
+    if (updated) {
+      setActiveWorkspace(updated);
+      setWorkspaces(getStoredWorkspaces());
+      if (updated.activeSubProjectId) {
+        handleSelectSubProject(updated.activeSubProjectId);
+      }
+    }
+  };
+
+  const handleRequestDeleteSubProject = (subId: string) => {
+    if (!activeWorkspace) return;
+    const sub = activeWorkspace.subProjects.find((s) => s.id === subId);
+    if (sub) {
+      setSubProjectToDelete(sub);
+    }
+  };
+
+  const handleConfirmDeleteSubProject = (subId: string) => {
+    if (!activeWorkspace) return;
+    const updated = deleteSubProjectFromWorkspace(activeWorkspace.id, subId);
+    if (updated) {
+      setActiveWorkspace(updated);
+      setWorkspaces(getStoredWorkspaces());
+      if (updated.activeSubProjectId) {
+        handleSelectSubProject(updated.activeSubProjectId);
+      }
+    }
+    setSubProjectToDelete(null);
   };
 
   // Gerar Diagrama e Metadados via IA Gemini
@@ -236,7 +363,7 @@ export default function App() {
       setAgentPrompt(parsedData.agentPrompt || "");
     } catch (error: any) {
       showErrorModal(error.message || String(error));
-    } flex: {
+    } finally {
       setIsLoading(false);
     }
   };
@@ -315,7 +442,7 @@ export default function App() {
       setAgentPrompt(parsedData.agentPrompt || "");
     } catch (error: any) {
       showErrorModal(error.message || String(error));
-    } flex: {
+    } finally {
       setIsLoading(false);
     }
   };
@@ -379,7 +506,7 @@ export default function App() {
       setStatusMsg("Gráfico regerado com sucesso pela IA!");
     } catch (error: any) {
       showErrorModal("Erro ao regerar gráfico: " + (error.message || String(error)));
-    } flex: {
+    } finally {
       setIsLoading(false);
     }
   };
@@ -389,8 +516,12 @@ export default function App() {
     setStatusMsg("");
   };
 
+  const activeSubProject = activeWorkspace?.subProjects.find(
+    (s) => s.id === activeSubProjectId
+  );
+
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
+    <div className="relative flex flex-col h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
       <LoadingModal isOpen={isLoading} statusMsg={statusMsg} />
 
       <ErrorModal
@@ -400,28 +531,42 @@ export default function App() {
       />
 
       <CreateProjectModal
-        isOpen={isCreateModalOpen || !!projectToEdit}
+        isOpen={isCreateModalOpen || !!workspaceToEdit}
         onClose={() => {
           setIsCreateModalOpen(false);
-          setProjectToEdit(null);
+          setWorkspaceToEdit(null);
         }}
-        onSubmit={handleSaveProjectForm}
-        projectToEdit={projectToEdit}
+        onSubmit={handleSaveWorkspaceForm}
+        projectToEdit={workspaceToEdit}
+      />
+
+      <DeleteWorkspaceModal
+        isOpen={!!workspaceToDelete}
+        workspace={workspaceToDelete}
+        onClose={() => setWorkspaceToDelete(null)}
+        onConfirmDelete={handleDeleteWorkspace}
+      />
+
+      <DeleteSubProjectModal
+        isOpen={!!subProjectToDelete}
+        subProject={subProjectToDelete}
+        onClose={() => setSubProjectToDelete(null)}
+        onConfirmDelete={handleConfirmDeleteSubProject}
       />
 
       {view === "dashboard" ? (
         <DashboardView
-          projects={projects}
-          onSelectProject={handleSelectProject}
+          projects={workspaces}
+          onSelectProject={handleSelectWorkspace}
           onCreateProject={() => setIsCreateModalOpen(true)}
-          onEditProject={(proj) => setProjectToEdit(proj)}
-          onDuplicateProject={handleDuplicateProject}
-          onDeleteProject={handleDeleteProject}
+          onEditProject={(ws) => setWorkspaceToEdit(ws)}
+          onDuplicateProject={handleDuplicateWorkspace}
+          onDeleteProject={(ws) => setWorkspaceToDelete(ws)}
           apiKey={apiKey}
           setApiKey={setApiKey}
         />
       ) : (
-        <>
+        <div className="relative flex h-full w-full overflow-hidden">
           {/* Backdrop para fechar Sidebar em telas móveis/tablets (< 1024px) */}
           {isSidebarOpen && (
             <div
@@ -432,6 +577,15 @@ export default function App() {
           )}
 
           <Sidebar
+            workspace={activeWorkspace}
+            activeSubProjectId={activeSubProjectId}
+            onSelectSubProject={handleSelectSubProject}
+            onAddSubProject={handleAddSubProject}
+            onRenameSubProject={handleRenameSubProject}
+            onDuplicateSubProject={handleDuplicateSubProject}
+            onDeleteSubProject={handleRequestDeleteSubProject}
+            onDeleteWorkspace={(ws) => setWorkspaceToDelete(ws)}
+            onBackToDashboard={() => setView("dashboard")}
             apiKey={apiKey}
             setApiKey={setApiKey}
             promptInput={currentPrompt}
@@ -465,9 +619,9 @@ export default function App() {
             onRegenerateGraphOnly={handleRegenerateGraphOnly}
             isLoading={isLoading}
             onReturnToDashboard={() => setView("dashboard")}
-            projectName={activeProject?.name}
+            projectName={activeSubProject ? `${activeWorkspace?.name} • ${activeSubProject.name}` : activeWorkspace?.name}
           />
-        </>
+        </div>
       )}
     </div>
   );
