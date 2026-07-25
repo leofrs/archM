@@ -58,6 +58,10 @@ function ReactFlowContent({
       setNodes(parsedNodes);
       setEdges(parsedEdges);
       setIsDirty(false);
+    } else {
+      setNodes([]);
+      setEdges([]);
+      setIsDirty(false);
     }
   }, [mermaidCode, nodesMetadata, setNodes, setEdges]);
 

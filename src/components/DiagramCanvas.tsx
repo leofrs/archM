@@ -31,6 +31,8 @@ interface DiagramCanvasProps {
   onAnalyzeDrawing?: (base64Image: string) => void;
   onRegenerateGraphOnly?: (brokenCode: string, errorMsg: string) => void;
   isLoading?: boolean;
+  onReturnToDashboard?: () => void;
+  projectName?: string;
 }
 
 export function DiagramCanvas({
@@ -48,6 +50,8 @@ export function DiagramCanvas({
   onAnalyzeDrawing,
   onRegenerateGraphOnly,
   isLoading,
+  onReturnToDashboard,
+  projectName,
 }: DiagramCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -331,8 +335,20 @@ export function DiagramCanvas({
     >
       {/* CABEÇALHO SUPERIOR FIXO UNIFICADO */}
       <header className="min-h-14 py-2 bg-white border-b border-slate-200 px-3 sm:px-4 shrink-0 flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 relative z-30 shadow-xs">
-        {/* Esquerda: Menu Lateral + Seletor de Modo */}
+        {/* Esquerda: Botão Dashboard + Menu Lateral + Nome do Projeto */}
         <div className="flex flex-wrap items-center gap-2 max-w-full">
+          {onReturnToDashboard && (
+            <button
+              type="button"
+              onClick={onReturnToDashboard}
+              className="bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-600 hover:text-white px-2.5 sm:px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all h-9 shrink-0"
+              title="Voltar ao Dashboard de Projetos"
+            >
+              <i className="fa-solid fa-arrow-left text-xs"></i>
+              <span>Dashboard</span>
+            </button>
+          )}
+
           {!isSidebarOpen && (
             <button
               type="button"
@@ -343,6 +359,13 @@ export function DiagramCanvas({
               <i className="fa-solid fa-bars text-sm"></i>
               <span className="xs:inline">Menu</span>
             </button>
+          )}
+
+          {projectName && (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200/80 rounded-xl text-slate-800 text-xs font-bold h-9 shrink-0 max-w-[200px] xl:max-w-xs truncate" title={projectName}>
+              <i className="fa-solid fa-folder text-indigo-600 text-xs"></i>
+              <span className="truncate">{projectName}</span>
+            </div>
           )}
 
           <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1 h-9 items-center ">
