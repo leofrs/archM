@@ -86,9 +86,13 @@ export async function generateArchitectureDiagram(
   } else if (provider === "openai") {
     const payload: any = {
       model: model,
+      max_completion_tokens: 8192,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `CÓDIGO/CONTEXTO A ANALISAR:\n${prompt}` },
+        {
+          role: "user",
+          content: `CÓDIGO/CONTEXTO A ANALISAR:\n${prompt}\n\nIMPORTANTE: Decomponha o fluxo com o MAIOR NÍVEL DE DETALHAMENTO POSSÍVEL. Gere todos os nós, arestas, diagramas e metadados sem resumir ou omitir nenhuma etapa.`,
+        },
       ],
     };
 
@@ -220,12 +224,13 @@ export async function generateFromImageSketch(
   } else if (provider === "openai") {
     const payload: any = {
       model: model,
+      max_completion_tokens: 8192,
       messages: [
         { role: "system", content: systemPrompt },
         {
           role: "user",
           content: [
-            { type: "text", text: "ANALISE O DESENHO/ESBOÇO ANEXADO E CONVERTA-O PARA A ESTRUTURA PEDIDA NO CONTRATO JSON:" },
+            { type: "text", text: "ANALISE O DESENHO/ESBOÇO ANEXADO E CONVERTA-O PARA A ESTRUTURA PEDIDA NO CONTRATO JSON. DECOMPONHA COM O MAIOR NÍVEL DE DETALHAMENTO POSSÍVEL:" },
             {
               type: "image_url",
               image_url: {
@@ -348,6 +353,7 @@ export async function regenerateGraphSyntax(
   } else if (provider === "openai") {
     const payload: any = {
       model: model,
+      max_completion_tokens: 4096,
       messages: [{ role: "user", content: correctionPrompt }],
     };
 

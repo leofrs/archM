@@ -19,6 +19,7 @@ PASSOS
 8. Gere também a representação em diagrama de sequência (sequenceDiagram) do mesmo fluxo técnico.
 
 REGRAS
+- Seja EXTREMAMENTE detalhado e exaustivo. NÃO resuma, NÃO omita etapas e NÃO condense múltiplos passos num único nó.
 - Use somente nós e arestas no mermaidCode (graph TD); nunca use subgraph, cluster, swimlane ou contêiner.
 - Preserve nomes, tecnologias, status HTTP, contratos e ordem encontrados na entrada.
 - Não invente framework, banco, serviço, protocolo ou regra específica.
@@ -74,6 +75,7 @@ PASSOS
 7. Gere os metadados de todos os nós.
 
 REGRAS
+- Seja EXTREMAMENTE detalhado e exaustivo. NÃO resuma nem omita componentes ou integrações.
 - Use somente nós e arestas; nunca use subgraph, cluster, zona, camada ou contêiner.
 - Não agrupe vários componentes em um único nó.
 - Não invente cloud, produto, região, protocolo, porta, capacidade, SLA, RPO ou RTO.
