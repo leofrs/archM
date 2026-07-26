@@ -157,58 +157,60 @@ export function CreateProjectModal({
           )}
 
           {/* Seletor de Modo (Baixo Nível vs Alto Nível) */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              Nível da Arquitetura (Modo de Visualização)
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setMode("low-level")}
-                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
-                  mode === "low-level"
-                    ? "border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20 text-indigo-900"
-                    : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs flex items-center gap-1.5">
-                    <i className="fa-solid fa-code text-indigo-600"></i>
-                    Baixo Nível
-                  </span>
-                  {mode === "low-level" && (
-                    <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 leading-tight">
-                  Endpoints REST, DTOs de entrada/saída, Headers e Edge Cases técnicos.
-                </p>
-              </button>
+          {createWithInitialRoute && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Nível da Arquitetura (Modo de Visualização)
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMode("low-level")}
+                  className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                    mode === "low-level"
+                      ? "border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20 text-indigo-900"
+                      : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs flex items-center gap-1.5">
+                      <i className="fa-solid fa-code text-indigo-600"></i>
+                      Baixo Nível
+                    </span>
+                    {mode === "low-level" && (
+                      <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-tight">
+                    Endpoints REST, DTOs de entrada/saída, Headers e Edge Cases técnicos.
+                  </p>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setMode("high-level")}
-                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
-                  mode === "high-level"
-                    ? "border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20 text-indigo-900"
-                    : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs flex items-center gap-1.5">
-                    <i className="fa-solid fa-sitemap text-indigo-600"></i>
-                    Alto Nível
-                  </span>
-                  {mode === "high-level" && (
-                    <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 leading-tight">
-                  Topologia de sistemas, comunicação entre microsserviços e mensageria.
-                </p>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("high-level")}
+                  className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                    mode === "high-level"
+                      ? "border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20 text-indigo-900"
+                      : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs flex items-center gap-1.5">
+                      <i className="fa-solid fa-sitemap text-indigo-600"></i>
+                      Alto Nível
+                    </span>
+                    {mode === "high-level" && (
+                      <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-tight">
+                    Topologia de sistemas, comunicação entre microsserviços e mensageria.
+                  </p>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Footer Actions */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
