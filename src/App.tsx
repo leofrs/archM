@@ -100,6 +100,14 @@ export default function App() {
     if (subToSelect) {
       loadSubProjectState(subToSelect);
       setActiveSubProjectId(subToSelect.id);
+    } else {
+      setActiveSubProjectId("");
+      setMermaidCode("");
+      setMermaidSequenceCode("");
+      setNodesMetadata({});
+      setAgentPrompt("");
+      setLowLevelPrompt("");
+      setHighLevelPrompt("");
     }
     setView("workspace");
   };
@@ -287,6 +295,14 @@ export default function App() {
       setWorkspaces(getStoredWorkspaces());
       if (updated.activeSubProjectId) {
         handleSelectSubProject(updated.activeSubProjectId);
+      } else {
+        setActiveSubProjectId("");
+        setMermaidCode("");
+        setMermaidSequenceCode("");
+        setNodesMetadata({});
+        setAgentPrompt("");
+        setLowLevelPrompt("");
+        setHighLevelPrompt("");
       }
     }
     setSubProjectToDelete(null);

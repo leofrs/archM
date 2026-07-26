@@ -238,11 +238,11 @@ function migrateToWorkspaceFormat(rawProjects: any[]): Workspace[] {
   if (!Array.isArray(rawProjects)) return [];
 
   return rawProjects.map((item) => {
-    // Se o item já for um Workspace com subProjects válidos:
-    if (item && Array.isArray(item.subProjects) && item.subProjects.length > 0) {
+    // Se o item já for um Workspace (possui o array subProjects, mesmo que vazio):
+    if (item && Array.isArray(item.subProjects)) {
       return {
         ...item,
-        activeSubProjectId: item.activeSubProjectId || item.subProjects[0].id,
+        activeSubProjectId: item.activeSubProjectId || (item.subProjects[0]?.id || ""),
       };
     }
 

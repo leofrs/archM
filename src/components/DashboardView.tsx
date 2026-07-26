@@ -1,7 +1,11 @@
 import { useState } from "react";
 import type { Project } from "../types/project";
 import type { LLMConfig } from "../types/llm";
-import { getActiveLLMKey, getActiveLLMModel, LLM_PROVIDERS } from "../utils/llmStorage";
+import {
+  getActiveLLMKey,
+  getActiveLLMModel,
+  LLM_PROVIDERS,
+} from "../utils/llmStorage";
 
 interface DashboardViewProps {
   projects: Project[];
@@ -61,10 +65,10 @@ export function DashboardView({
   const personalCount = personalProjects.length;
   const examplesCount = exampleProjects.length;
   const lowLevelPersonalCount = personalProjects.filter((p) =>
-    p.subProjects?.some((sub) => sub.mode === "low-level")
+    p.subProjects?.some((sub) => sub.mode === "low-level"),
   ).length;
   const highLevelPersonalCount = personalProjects.filter((p) =>
-    p.subProjects?.some((sub) => sub.mode === "high-level")
+    p.subProjects?.some((sub) => sub.mode === "high-level"),
   ).length;
 
   const formatDate = (isoString: string) => {
@@ -125,11 +129,15 @@ export function DashboardView({
                 }`}
                 title={`Provedor Ativo: ${activeProviderInfo.name} (${activeModel})`}
               >
-                <i className={`${activeProviderInfo.icon} text-sm ${hasKey ? "text-indigo-400" : "text-amber-600"}`}></i>
+                <i
+                  className={`${activeProviderInfo.icon} text-sm ${hasKey ? "text-indigo-400" : "text-amber-600"}`}
+                ></i>
                 <div className="flex flex-col text-left">
                   <div className="flex items-center gap-1.5 leading-tight">
                     <span>{activeProviderInfo.name}</span>
-                    <span className={`w-1.5 h-1.5 rounded-full ${hasKey ? "bg-emerald-400" : "bg-amber-400"}`}></span>
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${hasKey ? "bg-emerald-400" : "bg-amber-400"}`}
+                    ></span>
                   </div>
                   <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
                     {activeModel}
@@ -332,8 +340,13 @@ export function DashboardView({
         {filteredProjects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredProjects.map((proj) => {
-              const activeSub = proj.subProjects?.find((s) => s.id === proj.activeSubProjectId) || proj.subProjects?.[0];
-              const isLowLevel = activeSub ? activeSub.mode === "low-level" : true;
+              const activeSub =
+                proj.subProjects?.find(
+                  (s) => s.id === proj.activeSubProjectId,
+                ) || proj.subProjects?.[0];
+              const isLowLevel = activeSub
+                ? activeSub.mode === "low-level"
+                : true;
               const isExample = !!proj.isExample;
 
               return (
@@ -372,33 +385,6 @@ export function DashboardView({
                           >
                             {isExample ? "Exemplo Prático" : "Meu Projeto"}
                           </span>
-
-                          {/* Badge Modo */}
-                          <span
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                              isLowLevel
-                                ? "bg-blue-50 border-blue-200 text-blue-700"
-                                : "bg-violet-50 border-violet-200 text-violet-700"
-                            }`}
-                          >
-                            {isLowLevel ? "Baixo Nível" : "Alto Nível"}
-                          </span>
-
-                          {/* Botão de Exclusão Direta no Topo do Card (Sempre Visível) */}
-                          {!isExample && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteProject(proj);
-                              }}
-                              className="px-2 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white transition-all cursor-pointer text-xs font-bold flex items-center gap-1.5 shadow-2xs ml-1"
-                              title="Excluir Workspace Permanentemente"
-                            >
-                              <i className="fa-solid fa-trash-can text-xs"></i>
-                              <span className="text-[10px]">Excluir</span>
-                            </button>
-                          )}
                         </div>
                       </div>
 
@@ -431,7 +417,10 @@ export function DashboardView({
                       <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-100">
                         <span className="flex items-center gap-1.5 font-bold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-lg border border-indigo-100/80">
                           <i className="fa-solid fa-layer-group text-indigo-500"></i>
-                          {proj.subProjects?.length || 1} {proj.subProjects?.length === 1 ? "Sub-projeto / Rota" : "Sub-projetos / Rotas"}
+                          {proj.subProjects?.length ?? 0}{" "}
+                          {proj.subProjects?.length === 1
+                            ? "Sub-projeto / Rota"
+                            : "Sub-projetos / Rotas"}
                         </span>
                         <span
                           className="flex items-center gap-1 text-slate-400"
