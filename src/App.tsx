@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { DiagramCanvas } from "./components/DiagramCanvas";
 import { ErrorModal } from "./components/ErrorModal";
@@ -40,6 +40,9 @@ import {
 const ACTIVE_WORKSPACE_STORAGE_KEY = "archm_active_workspace_id_v1";
 
 export default function App() {
+  // Trava de transição entre sub-rotas para evitar corrida no autosave
+  const isSwitchingSubProjectRef = useRef(false);
+
   // Navegação: Dashboard vs Workspace do Projeto
   const [view, setView] = useState<"dashboard" | "workspace">("dashboard");
 
@@ -55,6 +58,7 @@ export default function App() {
       const storedWorkspaces = getStoredWorkspaces();
       const targetWorkspace = storedWorkspaces.find((w) => w.id === savedWsId);
       if (targetWorkspace) {
+        isSwitchingSubProjectRef.current = true;
         setActiveWorkspace(targetWorkspace);
         const subToSelect =
           targetWorkspace.subProjects.find(
@@ -116,6 +120,7 @@ export default function App() {
 
   // Carregar um Workspace Selecionado
   const handleSelectWorkspace = (workspace: Workspace) => {
+    isSwitchingSubProjectRef.current = true;
     setActiveWorkspace(workspace);
     localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, workspace.id);
     const subToSelect =
@@ -184,6 +189,7 @@ export default function App() {
 
     const targetSub = syncedWs.subProjects.find((s) => s.id === subProjectId);
     if (targetSub) {
+      isSwitchingSubProjectRef.current = true;
       loadSubProjectState(targetSub);
       setActiveSubProjectId(subProjectId);
       const updatedWs = { ...syncedWs, activeSubProjectId: subProjectId };
@@ -195,6 +201,10 @@ export default function App() {
 
   // Atualiza autosave local quando os dados alteram
   useEffect(() => {
+    if (isSwitchingSubProjectRef.current) {
+      isSwitchingSubProjectRef.current = false;
+      return;
+    }
     if (!activeWorkspace || !activeSubProjectId) return;
     const currentSub = activeWorkspace.subProjects.find((s) => s.id === activeSubProjectId);
     if (!currentSub) return;
@@ -212,7 +222,7 @@ export default function App() {
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [mermaidCode, mermaidSequenceCode, currentPrompt, mode, nodesMetadata, lowLevelPrompt, highLevelPrompt]);
+  }, [mermaidCode, mermaidSequenceCode, currentPrompt, mode, nodesMetadata, lowLevelPrompt, highLevelPrompt, activeSubProjectId]);
 
   // Criar / Editar Workspace via Modal
   const handleSaveWorkspaceForm = (data: {
@@ -239,6 +249,7 @@ export default function App() {
         undefined,
         data.initialSubProjectName
       );
+      isSwitchingSubProjectRef.current = true;
       setActiveWorkspace(newWs);
       localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, newWs.id);
       if (newWs.subProjects.length > 0) {
@@ -277,6 +288,7 @@ export default function App() {
 
     const updated = addSubProjectToWorkspace(syncedWs.id, name, subMode);
     if (updated) {
+      isSwitchingSubProjectRef.current = true;
       setActiveWorkspace(updated);
       setWorkspaces(getStoredWorkspaces());
       const newSub = updated.subProjects.find((s) => s.id === updated.activeSubProjectId);
@@ -304,6 +316,7 @@ export default function App() {
 
     const updated = duplicateSubProjectInWorkspace(syncedWs.id, subId);
     if (updated) {
+      isSwitchingSubProjectRef.current = true;
       setActiveWorkspace(updated);
       setWorkspaces(getStoredWorkspaces());
       const newSub = updated.subProjects.find((s) => s.id === updated.activeSubProjectId);

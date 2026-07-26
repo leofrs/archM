@@ -247,9 +247,21 @@ export function DiagramCanvas({
   };
 
   useEffect(() => {
-    if (activeMermaidCode && viewMode === "mermaid") {
-      renderDiagram(activeMermaidCode);
-      setSelectedNode(null);
+    if (viewMode === "mermaid") {
+      if (activeMermaidCode) {
+        renderDiagram(activeMermaidCode);
+        setSelectedNode(null);
+      } else {
+        if (panZoomInstance.current) {
+          panZoomInstance.current.destroy();
+          panZoomInstance.current = null;
+        }
+        if (containerRef.current) {
+          containerRef.current.innerHTML = "";
+        }
+        setFallbackInfo(null);
+        setSelectedNode(null);
+      }
     }
   }, [activeMermaidCode, viewMode]);
 
@@ -518,20 +530,25 @@ export function DiagramCanvas({
           {/* CONTEÚDO 1: VISÃO MERMAID SVG */}
           {viewMode === "mermaid" && (
             <div
-              id="mermaid-container"
-              ref={containerRef}
-              className="w-full h-full overflow-hidden flex justify-center items-center [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-none"
+              id="mermaid-wrapper"
+              className="w-full h-full overflow-hidden flex justify-center items-center relative"
               style={{
                 backgroundImage:
                   "linear-gradient(rgba(100, 116, 139, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 116, 139, 0.1) 1px, transparent 1px)",
                 backgroundSize: "40px 40px",
               }}
             >
-              {!activeMermaidCode && (
-                <div className="text-slate-500 text-sm text-center">
+              {!activeMermaidCode ? (
+                <div className="text-slate-500 text-sm text-center select-none animate-fadeIn">
                   <div className="text-3xl mb-2.5">⌘</div>O diagrama gerado
                   aparecerá aqui.
                 </div>
+              ) : (
+                <div
+                  id="mermaid-container"
+                  ref={containerRef}
+                  className="w-full h-full flex justify-center items-center [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-none"
+                />
               )}
             </div>
           )}
