@@ -331,54 +331,55 @@ export function Sidebar({
   return (
     <aside className="fixed inset-y-0 left-0 z-40 w-[88vw] max-w-[400px] lg:relative lg:w-[400px] lg:z-10 shrink-0 bg-white text-slate-900 border-r border-slate-200/80 flex flex-col p-4 sm:p-5 shadow-lg lg:shadow-xs transition-all duration-300 overflow-y-auto selection:bg-indigo-500 selection:text-white">
       {/* 1. TOPO: WORKSPACE & VOLTAR AO DASHBOARD (TEMA CLARO CLASSICO) */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="pb-4 border-b border-slate-100 mb-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={onBackToDashboard}
-            className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 grid place-items-center transition-all cursor-pointer border border-slate-200 shrink-0"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer border border-slate-200 shrink-0"
             title="Voltar ao Dashboard"
           >
             <i className="fa-solid fa-arrow-left text-xs"></i>
+            <span>Voltar ao Dashboard</span>
           </button>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-slate-900 text-sm truncate">
-                {workspace?.name || "Workspace"}
-              </span>
-              {workspace?.isExample && (
-                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[9px] font-bold border border-amber-200 shrink-0">
-                  Exemplo
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] text-slate-500 truncate">
-              {workspace?.subProjects.length || 0} rotas no workspace
-            </p>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {workspace && !workspace.isExample && onDeleteWorkspace && (
+              <button
+                type="button"
+                onClick={() => onDeleteWorkspace(workspace)}
+                className="w-7 h-7 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 grid place-items-center transition-colors cursor-pointer shrink-0"
+                title="Excluir Workspace Permanentemente"
+              >
+                <i className="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-900 hover:bg-slate-100 grid place-items-center transition-colors cursor-pointer shrink-0"
+              title="Recolher Menu Lateral"
+            >
+              <i className="fa-solid fa-chevron-left text-xs"></i>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {workspace && !workspace.isExample && onDeleteWorkspace && (
-            <button
-              type="button"
-              onClick={() => onDeleteWorkspace(workspace)}
-              className="w-7 h-7 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 grid place-items-center transition-colors cursor-pointer shrink-0"
-              title="Excluir Workspace Permanentemente"
-            >
-              <i className="fa-solid fa-trash-can text-xs"></i>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen(false)}
-            className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-900 hover:bg-slate-100 grid place-items-center transition-colors cursor-pointer shrink-0"
-            title="Recolher Menu Lateral"
-          >
-            <i className="fa-solid fa-chevron-left text-xs"></i>
-          </button>
+        <div className="min-w-0 pt-0.5">
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-slate-900 text-sm truncate">
+              {workspace?.name || "Workspace"}
+            </span>
+            {workspace?.isExample && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[9px] font-bold border border-amber-200 shrink-0">
+                Exemplo
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-slate-500 truncate">
+            {workspace?.subProjects.length || 0} rotas no workspace
+          </p>
         </div>
       </div>
 

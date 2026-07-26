@@ -68,7 +68,7 @@ export function SubProjectTabBar({
           title="Voltar ao Dashboard de Workspaces"
         >
           <i className="fa-solid fa-arrow-left text-[11px]"></i>
-          <span>Dashboard</span>
+          <span>Voltar ao Dashboard</span>
         </button>
 
         <div className="h-4 w-px bg-slate-700"></div>
