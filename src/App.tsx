@@ -37,6 +37,8 @@ import {
   COMPLETE_LOW_LEVEL_WITH_EDGE_CASES_PROMPT,
 } from "./constants";
 
+const ACTIVE_WORKSPACE_STORAGE_KEY = "archm_active_workspace_id_v1";
+
 export default function App() {
   // Navegação: Dashboard vs Workspace do Projeto
   const [view, setView] = useState<"dashboard" | "workspace">("dashboard");
@@ -45,6 +47,28 @@ export default function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() => getStoredWorkspaces());
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [activeSubProjectId, setActiveSubProjectId] = useState<string>("");
+
+  // Restaurar workspace ativo gravado no localStorage ao montar o componente (evita redirecionamento para o dashboard no F5)
+  useEffect(() => {
+    const savedWsId = localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+    if (savedWsId) {
+      const storedWorkspaces = getStoredWorkspaces();
+      const targetWorkspace = storedWorkspaces.find((w) => w.id === savedWsId);
+      if (targetWorkspace) {
+        setActiveWorkspace(targetWorkspace);
+        const subToSelect =
+          targetWorkspace.subProjects.find(
+            (s) => s.id === targetWorkspace.activeSubProjectId
+          ) || targetWorkspace.subProjects[0];
+
+        if (subToSelect) {
+          loadSubProjectState(subToSelect);
+          setActiveSubProjectId(subToSelect.id);
+        }
+        setView("workspace");
+      }
+    }
+  }, []);
 
   // Modais de Criação/Edição/Exclusão de Workspaces e Sub-projetos
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -93,6 +117,7 @@ export default function App() {
   // Carregar um Workspace Selecionado
   const handleSelectWorkspace = (workspace: Workspace) => {
     setActiveWorkspace(workspace);
+    localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, workspace.id);
     const subToSelect =
       workspace.subProjects.find((s) => s.id === workspace.activeSubProjectId) ||
       workspace.subProjects[0];
@@ -123,27 +148,14 @@ export default function App() {
     setHighLevelPrompt(sub.highLevelPrompt || sub.agentPrompt || "");
   };
 
-  // Seleção e alteração de Sub-projeto
-  const handleSelectSubProject = (subProjectId: string) => {
-    if (!activeWorkspace) return;
-    saveCurrentSubProjectState();
-
-    const targetSub = activeWorkspace.subProjects.find((s) => s.id === subProjectId);
-    if (targetSub) {
-      loadSubProjectState(targetSub);
-      setActiveSubProjectId(subProjectId);
-      const updatedWs = { ...activeWorkspace, activeSubProjectId: subProjectId };
-      setActiveWorkspace(updatedWs);
-      updateWorkspaceInStorage(updatedWs);
-      setWorkspaces(getStoredWorkspaces());
-    }
-  };
-
-  // Salvar estado atual do sub-projeto
-  const saveCurrentSubProjectState = () => {
-    if (!activeWorkspace || !activeSubProjectId) return;
-    const updatedSubProjects = activeWorkspace.subProjects.map((sub) => {
-      if (sub.id === activeSubProjectId) {
+  // Salvar estado atual do sub-projeto (aceita workspace opcional para evitar closures desatualizadas)
+  const saveCurrentSubProjectState = (
+    targetWorkspace: Workspace | null = activeWorkspace,
+    targetSubId: string = activeSubProjectId
+  ): Workspace | null => {
+    if (!targetWorkspace || !targetSubId) return null;
+    const updatedSubProjects = targetWorkspace.subProjects.map((sub) => {
+      if (sub.id === targetSubId) {
         return {
           ...sub,
           mode,
@@ -158,10 +170,27 @@ export default function App() {
       return sub;
     });
 
-    const updatedWs = { ...activeWorkspace, subProjects: updatedSubProjects };
+    const updatedWs = { ...targetWorkspace, subProjects: updatedSubProjects };
     setActiveWorkspace(updatedWs);
     updateWorkspaceInStorage(updatedWs);
     setWorkspaces(getStoredWorkspaces());
+    return updatedWs;
+  };
+
+  // Seleção e alteração de Sub-projeto
+  const handleSelectSubProject = (subProjectId: string) => {
+    if (!activeWorkspace || subProjectId === activeSubProjectId) return;
+    const syncedWs = saveCurrentSubProjectState() || activeWorkspace;
+
+    const targetSub = syncedWs.subProjects.find((s) => s.id === subProjectId);
+    if (targetSub) {
+      loadSubProjectState(targetSub);
+      setActiveSubProjectId(subProjectId);
+      const updatedWs = { ...syncedWs, activeSubProjectId: subProjectId };
+      setActiveWorkspace(updatedWs);
+      updateWorkspaceInStorage(updatedWs);
+      setWorkspaces(getStoredWorkspaces());
+    }
   };
 
   // Atualiza autosave local quando os dados alteram
@@ -211,6 +240,7 @@ export default function App() {
         data.initialSubProjectName
       );
       setActiveWorkspace(newWs);
+      localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, newWs.id);
       if (newWs.subProjects.length > 0) {
         setActiveSubProjectId(newWs.subProjects[0].id);
         loadSubProjectState(newWs.subProjects[0]);
@@ -233,6 +263,7 @@ export default function App() {
     deleteWorkspaceFromStorage(workspaceId);
     setWorkspaces(getStoredWorkspaces());
     if (activeWorkspace?.id === workspaceId) {
+      localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
       setActiveWorkspace(null);
       setView("dashboard");
     }
@@ -242,14 +273,16 @@ export default function App() {
   // Gerenciamento de Sub-projetos
   const handleAddSubProject = (name: string, subMode: "low-level" | "high-level") => {
     if (!activeWorkspace) return;
-    saveCurrentSubProjectState();
+    const syncedWs = saveCurrentSubProjectState() || activeWorkspace;
 
-    const updated = addSubProjectToWorkspace(activeWorkspace.id, name, subMode);
+    const updated = addSubProjectToWorkspace(syncedWs.id, name, subMode);
     if (updated) {
       setActiveWorkspace(updated);
       setWorkspaces(getStoredWorkspaces());
-      if (updated.activeSubProjectId) {
-        handleSelectSubProject(updated.activeSubProjectId);
+      const newSub = updated.subProjects.find((s) => s.id === updated.activeSubProjectId);
+      if (newSub) {
+        setActiveSubProjectId(newSub.id);
+        loadSubProjectState(newSub);
       }
     }
   };
@@ -267,14 +300,16 @@ export default function App() {
 
   const handleDuplicateSubProject = (subId: string) => {
     if (!activeWorkspace) return;
-    saveCurrentSubProjectState();
+    const syncedWs = saveCurrentSubProjectState() || activeWorkspace;
 
-    const updated = duplicateSubProjectInWorkspace(activeWorkspace.id, subId);
+    const updated = duplicateSubProjectInWorkspace(syncedWs.id, subId);
     if (updated) {
       setActiveWorkspace(updated);
       setWorkspaces(getStoredWorkspaces());
-      if (updated.activeSubProjectId) {
-        handleSelectSubProject(updated.activeSubProjectId);
+      const newSub = updated.subProjects.find((s) => s.id === updated.activeSubProjectId);
+      if (newSub) {
+        setActiveSubProjectId(newSub.id);
+        loadSubProjectState(newSub);
       }
     }
   };
@@ -294,7 +329,11 @@ export default function App() {
       setActiveWorkspace(updated);
       setWorkspaces(getStoredWorkspaces());
       if (updated.activeSubProjectId) {
-        handleSelectSubProject(updated.activeSubProjectId);
+        const nextSub = updated.subProjects.find((s) => s.id === updated.activeSubProjectId);
+        if (nextSub) {
+          setActiveSubProjectId(nextSub.id);
+          loadSubProjectState(nextSub);
+        }
       } else {
         setActiveSubProjectId("");
         setMermaidCode("");
@@ -423,6 +462,12 @@ export default function App() {
     (s) => s.id === activeSubProjectId
   );
 
+  const handleBackToDashboard = () => {
+    saveCurrentSubProjectState();
+    localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+    setView("dashboard");
+  };
+
   return (
     <div className="relative flex flex-col h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
       <LoadingModal isOpen={isLoading} statusMsg={statusMsg} />
@@ -495,7 +540,7 @@ export default function App() {
             onDuplicateSubProject={handleDuplicateSubProject}
             onDeleteSubProject={handleRequestDeleteSubProject}
             onDeleteWorkspace={(ws) => setWorkspaceToDelete(ws)}
-            onBackToDashboard={() => setView("dashboard")}
+            onBackToDashboard={handleBackToDashboard}
             llmConfig={llmConfig}
             onOpenLLMConfig={() => setIsLLMModalOpen(true)}
             promptInput={currentPrompt}
@@ -528,7 +573,7 @@ export default function App() {
             onAnalyzeDrawing={handleGenerateFromImage}
             onRegenerateGraphOnly={handleRegenerateGraphOnly}
             isLoading={isLoading}
-            onReturnToDashboard={() => setView("dashboard")}
+            onReturnToDashboard={handleBackToDashboard}
             projectName={activeSubProject ? `${activeWorkspace?.name} • ${activeSubProject.name}` : activeWorkspace?.name}
           />
         </div>
