@@ -23,7 +23,9 @@ export function LoadingModal({ isOpen, statusMsg }: LoadingModalProps) {
     }
 
     const interval = setInterval(() => {
-      setCurrentStepIndex((prevIndex) => (prevIndex + 1) % DEFAULT_LOADING_STEPS.length);
+      setCurrentStepIndex(
+        (prevIndex) => (prevIndex + 1) % DEFAULT_LOADING_STEPS.length,
+      );
     }, 2800);
 
     return () => clearInterval(interval);
@@ -31,44 +33,44 @@ export function LoadingModal({ isOpen, statusMsg }: LoadingModalProps) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex justify-center items-center z-50 p-4 animate-fade-in">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-8 flex flex-col items-center text-center relative">
-        
-        {/* Ambient background glow */}
-        <div className="absolute -top-12 -left-12 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-violet-500/20 rounded-full blur-2xl pointer-events-none" />
+  const currentMessage = statusMsg || DEFAULT_LOADING_STEPS[currentStepIndex];
 
-        {/* AI Icon Header */}
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-6 border border-indigo-400/30">
-          <i className="fa-solid fa-wand-magic-sparkles text-2xl text-white animate-pulse"></i>
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-4 animate-fadeIn">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-8 flex flex-col items-center text-center relative bg-gradient-to-b from-indigo-50/50 via-white to-white">
+        {/* Animated Dual Ring AI Orb Icon */}
+        <div className="relative mb-6 flex items-center justify-center">
+          {/* Outer ring */}
+          <div className="w-20 h-20 rounded-full border-2 border-indigo-600/20 border-t-indigo-600 animate-spin" />
+          {/* Inner counter-rotating ring */}
+          <div className="w-14 h-14 rounded-full border-2 border-violet-500/30 border-b-violet-600 animate-[spin_2s_linear_infinite_reverse] absolute" />
+          {/* Icon Badge Center */}
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-lg shadow-indigo-500/25 absolute border border-indigo-400/30">
+            <i className="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
         </div>
 
-        {/* Title */}
-        <h3 className="text-lg font-bold text-white mb-2 tracking-tight">
+        {/* Header Title */}
+        <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
           Gerando Arquitetura com IA
         </h3>
 
-        {/* Status Messages */}
-        <p className="text-xs text-indigo-300 font-medium h-6 flex items-center justify-center transition-all duration-300">
-          {statusMsg || DEFAULT_LOADING_STEPS[currentStepIndex]}
-        </p>
-
-        {/* Sub-step indicator string */}
-        <p className="text-[11px] text-slate-400 mt-1 mb-6">
-          {DEFAULT_LOADING_STEPS[currentStepIndex]}
-        </p>
-
-        {/* 3 Animated Dots Loading */}
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="w-3 h-3 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s] shadow-sm shadow-indigo-500/50"></span>
-          <span className="w-3 h-3 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s] shadow-sm shadow-indigo-400/50"></span>
-          <span className="w-3 h-3 bg-violet-400 rounded-full animate-bounce shadow-sm shadow-violet-400/50"></span>
+        {/* Active Status Message Pill Badge */}
+        <div className="mt-3 mb-4 px-3.5 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full flex items-center gap-2 max-w-full">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+          </span>
+          <span className="text-xs font-semibold text-indigo-700 truncate">
+            {currentMessage}
+          </span>
         </div>
 
-        <span className="text-[10px] text-slate-500 font-mono tracking-wider uppercase mt-4">
-          Aguarde a resposta do LLM...
-        </span>
+        {/* Sub-description */}
+        <p className="text-xs text-slate-500 max-w-xs mb-6 leading-relaxed">
+          O modelo de IA está processando as diretrizes técnicas e sintetizando
+          o diagrama de fluxo.
+        </p>
       </div>
     </div>
   );
